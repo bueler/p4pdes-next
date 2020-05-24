@@ -6,9 +6,16 @@ riemann: riemann.o
 	-${CLINKER} -o riemann riemann.o  ${PETSC_LIB}
 	${RM} riemann.o
 
+# testing
+
+runriemann_1:
+	-@../testit.sh riemann "-da_grid_x 5 -ts_monitor" 1 1
+
+test: runriemann_1
+
 # etc
 
-.PHONY: distclean
+.PHONY: distclean runriemann_1 test
 
 distclean:
 	@rm -f *~ riemann
