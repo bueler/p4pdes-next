@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# A script to run regression tests from the c/chN/ directories.  Use "make test"
+# A script to run regression tests.  Use "make test" in the subdirectories,
 # which runs this script as follows:
 #    ./testit.sh PROGRAM OPTS PROCESSES TESTNUM
 
