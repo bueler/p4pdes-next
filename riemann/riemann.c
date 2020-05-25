@@ -31,7 +31,7 @@ int main(int argc,char **argv) {
     ProblemCtx       user;               // problem-specific information
     char             fieldnamestr[20];// FIXME use fieldnames from ProblemCtx
     PetscInt         k, steps;
-    PetscReal        hx, t0=0.0, dt=0.1, tf=0.25; // FIXME control by options
+    PetscReal        hx, t0=0.0, dt=0.1, tf=1.0; // FIXME control by options
 
     PetscInitialize(&argc,&argv,(char*)0,help);
     ierr = CreateCase(0,&user); CHKERRQ(ierr);
@@ -124,7 +124,7 @@ PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
 
     // get flux at left boundary (of first cell owned by process)
     if (info->xs == 0) {
-        ierr = user->PhiL_bdryflux(t,Fl); CHKERRQ(ierr);
+        ierr = user->PhiL_bdryflux(t,&au[(info->dof)*(info->xs)],Fl); CHKERRQ(ierr);
     } else {
         x = user->a_left + (info->xs+0.5) * hx;
         ierr = user->faceflux(t,x-hx/2.0,&au[(info->dof)*(info->xs-1)],
@@ -138,7 +138,7 @@ PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
         ierr = user->g_source(t,x,&au[(info->dof)*i],&aG[(info->dof)*i]); CHKERRQ(ierr);
         // get right-face flux for cell
         if (i == info->mx-1) {
-            ierr = user->PhiR_bdryflux(t,Fr); CHKERRQ(ierr);
+            ierr = user->PhiR_bdryflux(t,&au[(info->dof)*i],Fr); CHKERRQ(ierr);
         } else {
             ierr = user->faceflux(t,x+hx/2.0,&au[(info->dof)*i],
                                              &au[(info->dof)*(i+1)],Fr); CHKERRQ(ierr);
