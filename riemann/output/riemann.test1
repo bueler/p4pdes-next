@@ -1,9 +1,10 @@
 solving system of 2 equations on 5-point grid with dx=0.4 ...
 0 TS dt 0.1 time 0.
-1 TS dt 0.149833 time 0.1
-2 TS dt 0.171464 time 0.249833
-3 TS dt 0.193179 time 0.421297
-4 TS dt 0.192762 time 0.614476
-5 TS dt 0.192762 time 0.807238
-6 TS dt 0.269372 time 1.
-... completed 6 steps to time 1.
+1 TS dt 0.117203 time 0.1
+2 TS dt 0.138562 time 0.217203
+3 TS dt 0.166691 time 0.355765
+4 TS dt 0.200735 time 0.522456
+5 TS dt 0.138405 time 0.723191
+6 TS dt 0.138405 time 0.861595
+7 TS dt 0.265814 time 1.
+... completed 7 steps to time 1.
