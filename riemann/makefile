@@ -21,5 +21,5 @@ test: runriemann_1 runriemann_2
 .PHONY: distclean runriemann_1 runriemann_2 test
 
 distclean:
-	@rm -f *~ riemann
+	@rm -f *~ riemann difftmp maketmp tmp
 

@@ -15,6 +15,14 @@ and so
 is constant.  The boundary conditions are a closed (reflecting end) on the
 left and outflow (no reflection) on the right end.
 
+The ordered left eigenvector expansion of A is
+    lambda0 = - c0,   w0 = [1, - rho0 c0]'
+    lambda1 = + c0,   w1 = [1, + rho0 c0]'
+where  c0 = sqrt(K0/rho0).  For the local cell-face flux problem
+FIXME
+thus
+    faceflux(ql,qr) = FIXME
+
 * R. LeVeque, "Finite Volume Methods for Hyperbolic Problems", Cambridge
   University Press, 2002.
 */
@@ -43,6 +51,7 @@ PetscErrorCode acoustic_g(PetscReal t, PetscReal x, PetscReal *q, PetscReal *g) 
 }
 
 // closed end boundary condition:  u(t,a) = 0
+// FIXME use corrected w vectors
 PetscErrorCode acoustic_bdryflux_a(PetscReal t, PetscReal *qr, PetscReal *F) {
     const PetscReal  pa = qr[0] - qr[1],  // p(t,a) = p(t_n,x_0) - u(t_n,x_0)
                      ua = 0.0;            // u(t,a) = 0
@@ -52,6 +61,7 @@ PetscErrorCode acoustic_bdryflux_a(PetscReal t, PetscReal *qr, PetscReal *F) {
 }
 
 // reflecting boundary condition:  p(t,b) - Z0 u(t,b) = 0
+// FIXME use corrected w vectors
 PetscErrorCode acoustic_bdryflux_b(PetscReal t, PetscReal *ql, PetscReal *F) {
     const PetscReal  Z0 = PetscSqrtReal(acoustic_K0 * acoustic_rho0),
                      tmp = ql[0] + ql[1],
@@ -63,13 +73,11 @@ PetscErrorCode acoustic_bdryflux_b(PetscReal t, PetscReal *ql, PetscReal *F) {
 }
 
 // compute flux at internal faces from left and right values of q = [p, u]
-//FIXME  here is where all the action is ... needs clear documentation
 PetscErrorCode acoustic_faceflux(PetscReal t, PetscReal x,
        PetscReal *ql, PetscReal *qr, PetscReal *F) {
-    const PetscReal  c0 = (ql[0] + ql[1]) / 2.0,
-                     c1 = (qr[0] - qr[1]) / 2.0,
-                     pface = c0 + c1,
-                     uface = c0 - c1;
+    const PetscReal  Z0 = PetscSqrtReal(acoustic_K0 * acoustic_rho0),
+                     pface = 0.5 * (qr[0] + ql[0] + Z0 * (ql[1] - qr[1])),
+                     uface = 0.5 * ((1.0/Z0) * (ql[0] - qr[0]) + ql[1] + qr[1]);
     F[0] = acoustic_K0 * uface;
     F[1] = (1.0/acoustic_rho0) * pface;
     return 0;
