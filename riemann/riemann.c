@@ -3,7 +3,8 @@ static char help[] =
 "    q_t + F(t,x,q)_x = g(t,x,q)\n"
 "where solution q(t,x), flux F(t,x,q), and source g(t,x,q) are column vectors\n"
 "of length n.  Option prefix rie_.  The domain is (t,x) in [0,T]x[a,b].\n"
-"The initial condition is q(0,x) = f(x).  The flux may be of the form\n"
+"The initial condition is q(0,x) = f(x).\n"
+"  The flux may be of the form\n"
 "F(t,x,q) = A(t,x,q) q  (but this is not actually required).  Uses finite\n"
 "volumes and a Riemann solver\n"
 "    F = faceflux(t,x,qleft,qright)\n"
@@ -13,10 +14,18 @@ static char help[] =
 "    F = bdryflux_a(t,qright),\n"
 "    F = bdryflux_b(t,qleft),\n"
 "which allows at least reflecting and outflow boundary conditions.\n"
-"For now, solves an acoustic wave problem only.\n\n";
+"  Use -problem X to select a problem from:\n"
+"    acoustic   classical wave equation in n=2 system form\n"
+"    swater     shallow water equations (n=2)\n"
+"Defaults to acoustic.\n"
+"  Use options like these for further information and control\n"
+"    -da_grid_x\n"
+"    -ts_monitor\n"
+"    -ts_monitor_solution draw -draw_pause 0.1\n"
+"    -ts_type                     [default is rk]\n"
+"      -ts_rk_type                [default is 3bs]\n"
+"See the makefile for test examples, and do 'make test' to test.\n";
 
-// at this stage, following works:
-//   ./riemann -da_grid_x 100 -ts_monitor -ts_monitor_solution draw -draw_pause 0.1
 
 #include <petsc.h>
 
@@ -36,12 +45,13 @@ int main(int argc,char **argv) {
     DM               da;                 // structured grid
     Vec              q;                  // the solution
     DMDALocalInfo    info;               // structured grid info
+    ProblemType      problem;            // which problem we are solving
     ProblemCtx       user;               // problem-specific information
     PetscInt         k, steps;
     PetscReal        hx, qnorm, t0, tf;
 
     PetscInitialize(&argc,&argv,(char*)0,help);
-    ierr = CreateCase(0,&user); CHKERRQ(ierr);
+    ierr = CreateCase(0,&problem,&user); CHKERRQ(ierr);
 
     // create grid
     ierr = DMDACreate1d(PETSC_COMM_WORLD,DM_BOUNDARY_NONE,4,
@@ -80,7 +90,7 @@ int main(int argc,char **argv) {
     // solve
     hx = (user.b_right - user.a_left) / info.mx;
     ierr = PetscPrintf(PETSC_COMM_WORLD,
-               "solving problem %s\n",user.problem_name); CHKERRQ(ierr);
+               "solving problem %s\n",ProblemTypes[problem]); CHKERRQ(ierr);
     ierr = PetscPrintf(PETSC_COMM_WORLD,
                "  system of %d equations on %d-point grid with dx=%.5f ...\n",
                info.dof,info.mx,hx); CHKERRQ(ierr);
@@ -122,6 +132,8 @@ PetscErrorCode FormInitial(DMDALocalInfo *info, Vec q, PetscReal t0, ProblemCtx 
 
 
 // FIXME implement slope limiters
+// FIXME address nonlinear cases of rarefaction and shock
+
 // Right-hand-side of method-of-lines discretization of PDE.  Implements
 // Gudonov (Riemann-solver upwind) method.
 PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
