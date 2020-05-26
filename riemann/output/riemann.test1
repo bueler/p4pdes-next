@@ -1,4 +1,5 @@
-solving system of 2 equations on 5-point grid with dx=0.4 ...
+solving problem acoustic
+  system of 2 equations on 5-point grid with dx=0.40000 ...
 0 TS dt 0.1 time 0.
 1 TS dt 0.117203 time 0.1
 2 TS dt 0.138562 time 0.217203
@@ -7,4 +8,6 @@ solving system of 2 equations on 5-point grid with dx=0.4 ...
 5 TS dt 0.138405 time 0.723191
 6 TS dt 0.138405 time 0.861595
 7 TS dt 0.265814 time 1.
-... completed 7 steps to time 1.
+  ... completed 7 steps for 0.00000 <= t <= 1.00000
+  inf-norm of p (pressure) solution: 0.22940
+  inf-norm of u (velocity) solution: 0.16551

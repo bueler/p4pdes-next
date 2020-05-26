@@ -1,11 +1,19 @@
 static char help[] =
-"Solve hyperbolic system in one space dimension (1D):\n"
-"    u_t + (A(t,x) u)_x = g(t,x,u)\n"  // FIXME implement nonlinear A(t,x,u)
-"where u(t,x) is column vector of length n.  Uses finite volumes and\n"
-"a Riemann solver at cell faces to compute the flux.  Here A(t,x) is an\n"
-"n x n matrix and g(t,x,u) is a column vector of length n.  Domain is (t,x) in\n"
-"[0,T]x[a,b].  Initial condition is u(0,x) = f(x) and boundary conditions are\n"
-"given flux:  A(t,0) u(t,0) = PhiL(t),  A(t,L) u(t,L) = PhiR(t).\n\n";
+"Solve a hyperbolic system in one space dimension (1D):\n"
+"    q_t + F(t,x,q)_x = g(t,x,q)\n"
+"where solution q(t,x), flux F(t,x,q), and source g(t,x,q) are column vectors\n"
+"of length n.  Option prefix rie_.  The domain is (t,x) in [0,T]x[a,b].\n"
+"The initial condition is q(0,x) = f(x).  The flux may be of the form\n"
+"F(t,x,q) = A(t,x,q) q  (but this is not actually required).  Uses finite\n"
+"volumes and a Riemann solver\n"
+"    F = faceflux(t,x,qleft,qright)\n"
+"at cell faces.  That is, Godunov's method is used: at each cell face use the\n"
+"Riemann solver to compute the value on the cell face going forward in time.\n"
+"Similarly, it uses flux boundary conditions\n"
+"    F = bdryflux_a(t,qright),\n"
+"    F = bdryflux_b(t,qleft),\n"
+"which allows at least reflecting and outflow boundary conditions.\n"
+"For now, solves an acoustic wave problem only.\n\n";
 
 // at this stage, following works:
 //   ./riemann -da_grid_x 100 -ts_monitor -ts_monitor_solution draw -draw_pause 0.1
@@ -26,18 +34,18 @@ int main(int argc,char **argv) {
     PetscErrorCode   ierr;
     TS               ts;                 // ODE solver for method-of-lines (MOL)
     DM               da;                 // structured grid
-    Vec              u;                  // the solution
+    Vec              q;                  // the solution
     DMDALocalInfo    info;               // structured grid info
     ProblemCtx       user;               // problem-specific information
-    char             fieldnamestr[20];// FIXME use fieldnames from ProblemCtx
     PetscInt         k, steps;
-    PetscReal        hx, t0=0.0, dt=0.1, tf=1.0; // FIXME control by options
+    PetscReal        hx, qnorm, t0, tf;
 
     PetscInitialize(&argc,&argv,(char*)0,help);
     ierr = CreateCase(0,&user); CHKERRQ(ierr);
 
     // create grid
-    ierr = DMDACreate1d(PETSC_COMM_WORLD,DM_BOUNDARY_NONE,4,user.n_dim,1,NULL,&da); CHKERRQ(ierr);
+    ierr = DMDACreate1d(PETSC_COMM_WORLD,DM_BOUNDARY_NONE,4,
+                        user.n_dim,1,NULL,&da); CHKERRQ(ierr);
     ierr = DMSetFromOptions(da); CHKERRQ(ierr);
     ierr = DMSetUp(da); CHKERRQ(ierr);
     ierr = DMSetApplicationContext(da,&user); CHKERRQ(ierr);
@@ -45,11 +53,10 @@ int main(int argc,char **argv) {
     // set field names so that visualization makes sense
     ierr = DMDAGetLocalInfo(da,&info); CHKERRQ(ierr);
     for (k = 0; k < info.dof; k++) {
-        snprintf(fieldnamestr,19,"u%d",k);
-        ierr = DMDASetFieldName(da,k,fieldnamestr); CHKERRQ(ierr);
+        ierr = DMDASetFieldName(da,k,(user.field_names)[k]); CHKERRQ(ierr);
     }
 
-    // create TS:  du/dt = G(t,u)  form
+    // create TS:  dq/dt = G(t,q)  form
     ierr = TSCreate(PETSC_COMM_WORLD,&ts); CHKERRQ(ierr);
     ierr = TSSetProblemType(ts,TS_NONLINEAR); CHKERRQ(ierr);
     ierr = TSSetDM(ts,da); CHKERRQ(ierr);
@@ -58,59 +65,67 @@ int main(int argc,char **argv) {
     ierr = TSSetType(ts,TSRK); CHKERRQ(ierr);  // defaults to -ts_rk_type 3bs
 
     // set up time axis
-    ierr = TSSetTime(ts,t0); CHKERRQ(ierr);
-    ierr = TSSetMaxTime(ts,tf); CHKERRQ(ierr);
-    ierr = TSSetTimeStep(ts,dt); CHKERRQ(ierr);
+    ierr = TSSetTime(ts,user.t0_default); CHKERRQ(ierr);
+    ierr = TSSetMaxTime(ts,user.tf_default); CHKERRQ(ierr);
+    ierr = TSSetTimeStep(ts,(user.tf_default-user.t0_default)/10.0); CHKERRQ(ierr);
     ierr = TSSetExactFinalTime(ts,TS_EXACTFINALTIME_MATCHSTEP); CHKERRQ(ierr);
     ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
-    ierr = TSGetTime(ts,&t0); CHKERRQ(ierr);
-    ierr = TSGetTimeStep(ts,&dt); CHKERRQ(ierr);
 
     // get initial values
-    ierr = DMCreateGlobalVector(da,&u); CHKERRQ(ierr);
-    ierr = FormInitial(&info,u,t0,&user); CHKERRQ(ierr);
-    //ierr = VecView(u,PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+    ierr = DMCreateGlobalVector(da,&q); CHKERRQ(ierr);
+    ierr = TSGetTime(ts,&t0); CHKERRQ(ierr);
+    ierr = FormInitial(&info,q,t0,&user); CHKERRQ(ierr);
+    //ierr = VecView(q,PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
 
     // solve
     hx = (user.b_right - user.a_left) / info.mx;
     ierr = PetscPrintf(PETSC_COMM_WORLD,
-               "solving system of %d equations on %d-point grid with dx=%g ...\n",
+               "solving problem %s\n",user.problem_name); CHKERRQ(ierr);
+    ierr = PetscPrintf(PETSC_COMM_WORLD,
+               "  system of %d equations on %d-point grid with dx=%.5f ...\n",
                info.dof,info.mx,hx); CHKERRQ(ierr);
-    ierr = TSSolve(ts,u); CHKERRQ(ierr);
+    ierr = TSSolve(ts,q); CHKERRQ(ierr);
 
     // report on solution
     ierr = TSGetStepNumber(ts,&steps); CHKERRQ(ierr);
     ierr = TSGetTime(ts,&tf); CHKERRQ(ierr);
     ierr = PetscPrintf(PETSC_COMM_WORLD,
-               "... completed %d steps to time %g\n",steps,tf); CHKERRQ(ierr);
+               "  ... completed %d steps for %.5f <= t <= %.5f\n",
+               steps,t0,tf); CHKERRQ(ierr);
+    for (k = 0; k < info.dof; k++) {
+        ierr = VecStrideNorm(q,k,NORM_INFINITY,&qnorm); CHKERRQ(ierr);
+        ierr = PetscPrintf(PETSC_COMM_WORLD,
+               "  inf-norm of %s solution: %.5f\n",
+               (user.field_names)[k],qnorm); CHKERRQ(ierr);
+    }
 
-    VecDestroy(&u);  TSDestroy(&ts);  DMDestroy(&da);
+    VecDestroy(&q);  TSDestroy(&ts);  DMDestroy(&da);
+    ierr = DestroyCase(&user); CHKERRQ(ierr);
     return PetscFinalize();
 }
 
 
-PetscErrorCode FormInitial(DMDALocalInfo *info, Vec u, PetscReal t0, ProblemCtx *user) {
+PetscErrorCode FormInitial(DMDALocalInfo *info, Vec q, PetscReal t0, ProblemCtx *user) {
     PetscErrorCode   ierr;
     const PetscReal  hx = (user->b_right - user->a_left) / info->mx;
     PetscInt         i;
-    PetscReal        x, *au;
+    PetscReal        x, *aq;
 
-    ierr = DMDAVecGetArray(info->da, u, &au); CHKERRQ(ierr);
+    ierr = DMDAVecGetArray(info->da, q, &aq); CHKERRQ(ierr);
     for (i=info->xs; i<info->xs+info->xm; i++) {
         x = user->a_left + (i+0.5) * hx;
-        ierr = user->f_initial(t0,x,&au[(info->dof)*i]); CHKERRQ(ierr);
+        ierr = user->f_initial(t0,x,&aq[(info->dof)*i]); CHKERRQ(ierr);
     }
-    ierr = DMDAVecRestoreArray(info->da, u, &au); CHKERRQ(ierr);
+    ierr = DMDAVecRestoreArray(info->da, q, &aq); CHKERRQ(ierr);
     return 0;
 }
 
 
-// FIXME implement better boundary conditions
 // FIXME implement slope limiters
 // Right-hand-side of method-of-lines discretization of PDE.  Implements
 // Gudonov (Riemann-solver upwind) method.
 PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
-        PetscReal *au, PetscReal *aG, void *ctx) {
+        PetscReal *aq, PetscReal *aG, void *ctx) {
     PetscErrorCode   ierr;
     ProblemCtx       *user = (ProblemCtx*)ctx;
     const PetscReal  hx = (user->b_right - user->a_left) / info->mx;
@@ -124,24 +139,24 @@ PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
 
     // get flux at left boundary (of first cell owned by process)
     if (info->xs == 0) {
-        ierr = user->PhiL_bdryflux(t,&au[(info->dof)*(info->xs)],Fl); CHKERRQ(ierr);
+        ierr = user->bdryflux_a(t,&aq[(info->dof)*(info->xs)],Fl); CHKERRQ(ierr);
     } else {
         x = user->a_left + (info->xs+0.5) * hx;
-        ierr = user->faceflux(t,x-hx/2.0,&au[(info->dof)*(info->xs-1)],
-                                         &au[(info->dof)*(info->xs)],Fl); CHKERRQ(ierr);
+        ierr = user->faceflux(t,x-hx/2.0,&aq[(info->dof)*(info->xs-1)],
+                                         &aq[(info->dof)*(info->xs)],Fl); CHKERRQ(ierr);
     }
 
     // i counts cell center
     for (i = info->xs; i < info->xs + info->xm; i++) {
         x = user->a_left + (i+0.5) * hx;
         // aG[n i + k]  filled from g(t,x,u) first
-        ierr = user->g_source(t,x,&au[(info->dof)*i],&aG[(info->dof)*i]); CHKERRQ(ierr);
+        ierr = user->g_source(t,x,&aq[(info->dof)*i],&aG[(info->dof)*i]); CHKERRQ(ierr);
         // get right-face flux for cell
         if (i == info->mx-1) {
-            ierr = user->PhiR_bdryflux(t,&au[(info->dof)*i],Fr); CHKERRQ(ierr);
+            ierr = user->bdryflux_b(t,&aq[(info->dof)*i],Fr); CHKERRQ(ierr);
         } else {
-            ierr = user->faceflux(t,x+hx/2.0,&au[(info->dof)*i],
-                                             &au[(info->dof)*(i+1)],Fr); CHKERRQ(ierr);
+            ierr = user->faceflux(t,x+hx/2.0,&aq[(info->dof)*i],
+                                             &aq[(info->dof)*(i+1)],Fr); CHKERRQ(ierr);
         }
         // compute RHS
         for (k = 0; k < info->dof; k++)
