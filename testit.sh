@@ -19,7 +19,7 @@ else
 fi
 
 if [[ ! -f output/$1.test$4 ]]; then
-    echo "FAIL: Test #$4 of $CURRDIR/$1"
+    echo "FAIL: Test #$4 of $1"
     echo "       command = '$CMD'"
     echo "       OUTPUT MISSING"
 
@@ -30,12 +30,12 @@ else
     diff output/$1.test$4 tmp > difftmp
 
     if [[ -s difftmp ]] ; then
-       echo "FAIL: Test #$4 of $CURRDIR/$1"
+       echo "FAIL: Test #$4 of $1"
        echo "       command = '$CMD'"
        echo "       diffs follow:"
        cat difftmp
     else
-       echo "PASS: Test #$4 of $CURRDIR/$1"
+       echo "PASS: Test #$4 of $1"
        rm -f maketmp tmp difftmp
     fi
 
