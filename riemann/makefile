@@ -11,11 +11,14 @@ riemann: riemann.o
 runriemann_1:
 	-@../testit.sh riemann "-da_grid_x 5 -ts_monitor" 1 1
 
-test: runriemann_1
+runriemann_2:
+	-@../testit.sh riemann "-da_grid_x 100 -ts_max_time 3 -ts_type rk -ts_rk_type 5bs" 2 2
+
+test: runriemann_1 runriemann_2
 
 # etc
 
-.PHONY: distclean runriemann_1 test
+.PHONY: distclean runriemann_1 runriemann_2 test
 
 distclean:
 	@rm -f *~ riemann
