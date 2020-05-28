@@ -1,12 +1,12 @@
-solving problem swater
-  system of 2 equations on 10-point grid with dx=1.00000 ...
-0 TS dt 0.3 time 0.
-1 TS dt 0.41578 time 0.3
-2 TS dt 0.490365 time 0.71578
-3 TS dt 0.578282 time 1.20615
-4 TS dt 0.607787 time 1.78443
-5 TS dt 0.607787 time 2.39221
-6 TS dt 0.926751 time 3.
-  ... completed 6 steps for 0.00000 <= t <= 3.00000
+solving problem swater, a system of 2 equations,
+  on 10-point grid with dx=1.000000 and initial dt=0.947197...
+0 TS dt 0.947197 time 0.
+1 TS dt 0.4299 time 0.371663
+2 TS dt 0.505422 time 0.801563
+3 TS dt 0.5957 time 1.30699
+4 TS dt 0.548657 time 1.90269
+5 TS dt 0.548657 time 2.45134
+6 TS dt 0.943839 time 3.
+  ... completed 6 steps for 0.0000 <= t <= 3.0000
   inf-norm of h (surface height) solution: 1.02528
   inf-norm of h u (height * velocity) solution: 0.02587

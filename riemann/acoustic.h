@@ -90,6 +90,13 @@ static PetscErrorCode acoustic_faceflux(PetscReal t, PetscReal x,
     return 0;
 }
 
+// return c0
+static PetscErrorCode acoustic_maxspeed(PetscReal t, PetscReal x, PetscReal *q,
+                                        PetscReal *speed) {
+    *speed = PetscSqrtReal(acoustic_K0 / acoustic_rho0);
+    return 0;
+}
+
 PetscErrorCode  AcousticInitializer(ProblemCtx *user) {
     PetscErrorCode  ierr;
 
@@ -109,6 +116,7 @@ PetscErrorCode  AcousticInitializer(ProblemCtx *user) {
     user->bdryflux_a = &acoustic_bdryflux_a;
     user->bdryflux_b = &acoustic_bdryflux_b;
     user->faceflux = &acoustic_faceflux;
+    user->maxspeed = &acoustic_maxspeed;
     acoustic_Z0 = PetscSqrtReal(acoustic_K0 * acoustic_rho0);
     return 0;
 }

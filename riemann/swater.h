@@ -115,6 +115,20 @@ static PetscErrorCode swater_bdryflux_b(PetscReal t, PetscReal *ql, PetscReal *F
     return 0;
 }
 
+// compute maximum speed from q using  lam_0 = u - sqrt(g h), lam_1 = u + sqrt(g h)
+static PetscErrorCode swater_maxspeed(PetscReal t, PetscReal x, PetscReal *q,
+                                      PetscReal *speed) {
+    PetscReal delta;
+    if (q[0] <= 0.0) {
+        SETERRQ3(PETSC_COMM_SELF,1,
+                 "h = q[0] = %g is nonpositive at (t=%g,x=%g)\n",
+                 q[0],t,x);
+    }
+    delta = PetscSqrtReal(swater_grav * q[0]);
+    *speed = PetscMax(PetscAbs(q[1] - delta),PetscAbs(q[1] + delta));
+    return 0;
+}
+
 
 typedef enum {HUMP,
               DAM} SWInitialType;
@@ -149,6 +163,7 @@ PetscErrorCode  SWaterInitializer(ProblemCtx *user) {
     user->bdryflux_a = &swater_bdryflux_a;
     user->bdryflux_b = &swater_bdryflux_b;
     user->faceflux = &swater_faceflux;
+    user->maxspeed = &swater_maxspeed;
     return 0;
 }
 

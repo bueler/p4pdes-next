@@ -22,6 +22,8 @@ typedef struct {
                                   PetscReal *F);
     PetscErrorCode  (*faceflux)(PetscReal t, PetscReal x, PetscReal *ql, PetscReal *qr,
                                 PetscReal *F);
+    PetscErrorCode  (*maxspeed)(PetscReal t, PetscReal x, PetscReal *q,
+                                PetscReal *speed);
 } ProblemCtx;
 
 typedef PetscErrorCode ProblemInitializer(ProblemCtx*);

@@ -20,11 +20,14 @@ runriemann_3:
 runriemann_4:
 	-@../testit.sh riemann "-problem swater -initial dam -da_grid_x 5 -ts_max_time 2 -ts_monitor" 1 4
 
-test: runriemann_1 runriemann_2 runriemann_3 runriemann_4
+runriemann_5:
+	-@../testit.sh riemann "-problem swater -da_grid_x 7 -ts_dt 0.1 -ts_max_time 0.2 -ts_monitor" 1 5
+
+test: runriemann_1 runriemann_2 runriemann_3 runriemann_4 runriemann_5
 
 # etc
 
-.PHONY: clean runriemann_1 runriemann_2 runriemann_3 runriemann_4 test
+.PHONY: clean runriemann_1 runriemann_2 runriemann_3 runriemann_4 runriemann_5 test
 
 clean::
 	@rm -f *~ riemann difftmp maketmp tmp

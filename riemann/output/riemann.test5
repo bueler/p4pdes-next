@@ -1,0 +1,8 @@
+solving problem swater, a system of 2 equations,
+  on 7-point grid with dx=1.428571 and initial dt=0.100000...
+0 TS dt 0.1 time 0.
+1 TS dt 0.1 time 0.1
+2 TS dt 0.289348 time 0.2
+  ... completed 2 steps for 0.0000 <= t <= 0.2000
+  inf-norm of h (surface height) solution: 1.34316
+  inf-norm of h u (height * velocity) solution: 0.03081

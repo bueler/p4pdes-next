@@ -34,6 +34,7 @@ about how to add new problems. */
 #include "cases.h"
 
 extern PetscErrorCode FormInitial(DMDALocalInfo*, Vec, PetscReal, ProblemCtx*);
+extern PetscErrorCode GetMaxSpeed(DMDALocalInfo*, Vec, PetscReal, PetscReal*, ProblemCtx*);
 extern PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo*, PetscReal,
         PetscReal*, PetscReal*, void*);
 
@@ -46,7 +47,8 @@ int main(int argc,char **argv) {
     ProblemType      problem = ACOUSTIC; // which problem we are solving
     ProblemCtx       user;               // problem-specific information
     PetscInt         k, steps;
-    PetscReal        hx, qnorm, t0, tf;
+    PetscBool        flg;
+    PetscReal        hx, qnorm, t0, tf, dt, c;
 
     PetscInitialize(&argc,&argv,(char*)0,help);
 
@@ -90,11 +92,10 @@ int main(int argc,char **argv) {
     // set up time axis
     ierr = TSSetTime(ts,user.t0_default); CHKERRQ(ierr);
     ierr = TSSetMaxTime(ts,user.tf_default); CHKERRQ(ierr);
-
-// FIXME use CFL to get initial dt ... otherwise (at least in swater) one can get negative thickness from a too-large initial dt ... add "maxspeed" function to ProblemCtx?
-    ierr = TSSetTimeStep(ts,(user.tf_default-user.t0_default)/10.0); CHKERRQ(ierr);
+    dt = user.tf_default - user.t0_default;
+    ierr = TSSetTimeStep(ts,dt); CHKERRQ(ierr);  // usually reset below
     ierr = TSSetExactFinalTime(ts,TS_EXACTFINALTIME_MATCHSTEP); CHKERRQ(ierr);
-    ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
+    ierr = TSSetFromOptions(ts); CHKERRQ(ierr);
 
     // get initial values
     ierr = DMCreateGlobalVector(da,&q); CHKERRQ(ierr);
@@ -102,19 +103,29 @@ int main(int argc,char **argv) {
     ierr = FormInitial(&info,q,t0,&user); CHKERRQ(ierr);
     //ierr = VecView(q,PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
 
+    // use CFL to reset initial time-step dt (unless user sets)
+    ierr = PetscOptionsHasName(NULL,NULL,"-ts_dt",&flg); CHKERRQ(ierr);
+    ierr = GetMaxSpeed(&info,q,t0,&c,&user); CHKERRQ(ierr);
+    if (!flg && c > 0.0) {
+        ierr = TSGetMaxTime(ts,&tf); CHKERRQ(ierr);
+        dt = PetscMin(hx / c, tf-t0);
+        ierr = TSSetTimeStep(ts,dt); CHKERRQ(ierr);
+    } else {
+        ierr = TSGetTimeStep(ts,&dt); CHKERRQ(ierr);
+    }
+
     // solve
     ierr = PetscPrintf(PETSC_COMM_WORLD,
-               "solving problem %s\n",ProblemTypes[problem]); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_WORLD,
-               "  system of %d equations on %d-point grid with dx=%.5f ...\n",
-               info.dof,info.mx,hx); CHKERRQ(ierr);
+               "solving problem %s, a system of %d equations,\n"
+               "  on %d-point grid with dx=%.6f and initial dt=%.6f...\n",
+               ProblemTypes[problem],info.dof,info.mx,hx,dt); CHKERRQ(ierr);
     ierr = TSSolve(ts,q); CHKERRQ(ierr);
 
     // report on solution
     ierr = TSGetStepNumber(ts,&steps); CHKERRQ(ierr);
     ierr = TSGetTime(ts,&tf); CHKERRQ(ierr);
     ierr = PetscPrintf(PETSC_COMM_WORLD,
-               "  ... completed %d steps for %.5f <= t <= %.5f\n",
+               "  ... completed %d steps for %.4f <= t <= %.4f\n",
                steps,t0,tf); CHKERRQ(ierr);
     for (k = 0; k < info.dof; k++) {
         ierr = VecStrideNorm(q,k,NORM_INFINITY,&qnorm); CHKERRQ(ierr);
@@ -142,6 +153,28 @@ PetscErrorCode FormInitial(DMDALocalInfo *info, Vec q, PetscReal t0, ProblemCtx 
         ierr = user->f_initial(t0,x,&aq[(info->dof)*j]); CHKERRQ(ierr);
     }
     ierr = DMDAVecRestoreArray(info->da, q, &aq); CHKERRQ(ierr);
+    return 0;
+}
+
+
+PetscErrorCode GetMaxSpeed(DMDALocalInfo *info, Vec q, PetscReal t,
+                           PetscReal *maxspeed, ProblemCtx *user) {
+    PetscErrorCode   ierr;
+    const PetscReal  hx = (user->b_right - user->a_left) / info->mx;
+    PetscInt         j;
+    PetscReal        x, cj, locmax, *aq;
+    MPI_Comm         comm;
+
+    ierr = DMDAVecGetArray(info->da, q, &aq); CHKERRQ(ierr);
+    locmax = 0.0;
+    for (j=info->xs; j<info->xs+info->xm; j++) {
+        x = user->a_left + (j+0.5) * hx;
+        ierr = user->maxspeed(t,x,&aq[(info->dof)*j],&cj); CHKERRQ(ierr);
+        locmax = PetscMax(locmax,cj);
+    }
+    ierr = DMDAVecRestoreArray(info->da, q, &aq); CHKERRQ(ierr);
+    ierr = PetscObjectGetComm((PetscObject)info->da,&comm); CHKERRQ(ierr);
+    ierr = MPI_Allreduce(&locmax,maxspeed,1,MPIU_REAL,MPIU_MAX,comm); CHKERRQ(ierr);
     return 0;
 }
 
