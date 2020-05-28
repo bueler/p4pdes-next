@@ -29,14 +29,14 @@ typedef PetscErrorCode ProblemInitializer(ProblemCtx*);
 
 /* To add a new problem make edits in the following BLOCK. */
 #include "acoustic.h"
-//#include "swater.h"  FIXME
+#include "swater.h"
 typedef enum {ACOUSTIC,
               SWATER} ProblemType;
 static const char* ProblemTypes[] = {"acoustic",
                                      "swater",
                                      "ProblemType", "", NULL};
 static ProblemInitializer* InitializerPtrs[] = {&AcousticInitializer,
-                                                &AcousticInitializer};  //FIXME
+                                                &SWaterInitializer};
 /* end BLOCK */
 
 #endif
