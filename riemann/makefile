@@ -24,8 +24,8 @@ test: runriemann_1 runriemann_2 runriemann_3 runriemann_4
 
 # etc
 
-.PHONY: distclean runriemann_1 runriemann_2 runriemann_3 runriemann_4 test
+.PHONY: clean runriemann_1 runriemann_2 runriemann_3 runriemann_4 test
 
-distclean:
+clean::
 	@rm -f *~ riemann difftmp maketmp tmp
 

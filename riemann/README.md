@@ -15,5 +15,5 @@ The code is `riemann.c`.  Do this to build and run:
 
 ### cleaning up
 
-    $ make distclean
+    $ make clean
 
