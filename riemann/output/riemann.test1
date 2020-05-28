@@ -1,13 +1,13 @@
 solving problem acoustic
   system of 2 equations on 5-point grid with dx=0.40000 ...
 0 TS dt 0.1 time 0.
-1 TS dt 0.117203 time 0.1
-2 TS dt 0.138562 time 0.217203
-3 TS dt 0.166691 time 0.355765
-4 TS dt 0.200735 time 0.522456
-5 TS dt 0.138405 time 0.723191
-6 TS dt 0.138405 time 0.861595
-7 TS dt 0.265814 time 1.
+1 TS dt 0.128346 time 0.1
+2 TS dt 0.144321 time 0.228346
+3 TS dt 0.163525 time 0.372667
+4 TS dt 0.186628 time 0.536192
+5 TS dt 0.13859 time 0.72282
+6 TS dt 0.13859 time 0.86141
+7 TS dt 0.243673 time 1.
   ... completed 7 steps for 0.00000 <= t <= 1.00000
-  inf-norm of p (pressure) solution: 0.22940
-  inf-norm of u (velocity) solution: 0.16551
+  inf-norm of p (pressure) solution: 0.14502
+  inf-norm of u (velocity) solution: 0.18000

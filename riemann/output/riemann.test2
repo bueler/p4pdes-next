@@ -1,5 +1,5 @@
 solving problem acoustic
   system of 2 equations on 100-point grid with dx=0.02000 ...
-  ... completed 75 steps for 0.00000 <= t <= 3.00000
-  inf-norm of p (pressure) solution: 0.17196
-  inf-norm of u (velocity) solution: 0.34367
+  ... completed 38 steps for 0.00000 <= t <= 3.00000
+  inf-norm of p (pressure) solution: 0.18475
+  inf-norm of u (velocity) solution: 0.36951
