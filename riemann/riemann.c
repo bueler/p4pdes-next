@@ -21,7 +21,7 @@ static char help[] =
 "    -da_grid_x M                             [grid of M points]\n"
 "    -ts_monitor                              [shows time steps]\n"
 "    -ts_monitor_solution draw                [generate simple movie]\n"
-"        -draw_pause 0.1 -draw_size 1000,1000 [control the movie]\n"
+"        -draw_pause 0.1 -draw_size 2000,200  [control the movie]\n"
 "    -ts_type                                 [default is rk]\n"
 "        -ts_rk_type X                        [default is 3bs]\n"
 "See the makefile for test examples, and do 'make test' to test.\n\n";
@@ -90,6 +90,8 @@ int main(int argc,char **argv) {
     // set up time axis
     ierr = TSSetTime(ts,user.t0_default); CHKERRQ(ierr);
     ierr = TSSetMaxTime(ts,user.tf_default); CHKERRQ(ierr);
+
+// FIXME use CFL to get initial dt ... otherwise (at least in swater) one can get negative thickness from a too-large initial dt ... add "maxspeed" function to ProblemCtx?
     ierr = TSSetTimeStep(ts,(user.tf_default-user.t0_default)/10.0); CHKERRQ(ierr);
     ierr = TSSetExactFinalTime(ts,TS_EXACTFINALTIME_MATCHSTEP); CHKERRQ(ierr);
     ierr = TSSetFromOptions(ts);CHKERRQ(ierr);
