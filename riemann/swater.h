@@ -21,12 +21,14 @@ const PetscReal swater_grav = 1.0;
 const char swater_hname[50] = "h (surface height)",
            swater_huname[50] = "h u (height * velocity)";
 
+// see LeVeque Figure 13.1
 PetscErrorCode swater_hump(PetscReal t, PetscReal x, PetscReal *q) {
     q[0] = 1.0 + 0.4 * PetscExpReal(- 5.0 * x*x);
     q[1] = 0.0;
     return 0;
 }
 
+// see LeVeque Figure 13.4
 PetscErrorCode swater_dam(PetscReal t, PetscReal x, PetscReal *q) {
     q[0] = (x < 0) ? 3.0 : 1.0;
     q[1] = 0.0;

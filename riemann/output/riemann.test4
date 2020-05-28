@@ -1,0 +1,14 @@
+solving problem swater
+  system of 2 equations on 5-point grid with dx=2.00000 ...
+0 TS dt 0.3 time 0.
+1 TS dt 0.202385 time 0.212164
+2 TS dt 0.223746 time 0.414548
+3 TS dt 0.243385 time 0.638295
+4 TS dt 0.264583 time 0.88168
+5 TS dt 0.292871 time 1.14626
+6 TS dt 0.280433 time 1.43913
+7 TS dt 0.280433 time 1.71957
+8 TS dt 0.387741 time 2.
+  ... completed 8 steps for 0.00000 <= t <= 2.00000
+  inf-norm of h (surface height) solution: 2.62769
+  inf-norm of h u (height * velocity) solution: 1.15018
