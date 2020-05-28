@@ -2,6 +2,8 @@
 
 from LeVeque [1] pages 254--257; specific problem is for Figure 13.1
 
+use Roe solver designed for shallow water, section 15.3.3
+
 for constants see setprob.data and qinit.f in download from
 http://depts.washington.edu/clawpack/clawpack-4.3/book/chap13/swhump1/www/index.html
 thus:
