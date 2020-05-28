@@ -27,8 +27,8 @@ static char help[] =
 
 #include <petsc.h>
 
-/* The struct "ProblemCtx" is defined in cases.h, plus CreateCase() and
-DestroyCase().  See comments in cases.h for adding new problems. */
+/* The struct "ProblemCtx" is defined in cases.h.  See comments in cases.h
+about how to add new problems. */
 #include "cases.h"
 
 extern PetscErrorCode FormInitial(DMDALocalInfo*, Vec, PetscReal, ProblemCtx*);
@@ -41,15 +41,25 @@ int main(int argc,char **argv) {
     DM               da;                 // structured grid
     Vec              q;                  // the solution
     DMDALocalInfo    info;               // structured grid info
-    ProblemType      problem;            // which problem we are solving
+    ProblemType      problem = ACOUSTIC; // which problem we are solving
     ProblemCtx       user;               // problem-specific information
     PetscInt         k, steps;
     PetscReal        hx, qnorm, t0, tf;
 
     PetscInitialize(&argc,&argv,(char*)0,help);
 
-    // get which problem we are solving (reads option -problem)
-    ierr = CreateCase(&problem,&user); CHKERRQ(ierr);
+    // get which problem we are solving
+    // (ProblemType, ProblemTypes, InitializerPtrs are defined in cases.h)
+    ierr = PetscOptionsBegin(PETSC_COMM_WORLD,"",
+               "riemann (hyperbolic system solver) options",""); CHKERRQ(ierr);
+    ierr = PetscOptionsEnum("-problem", "problem type",
+               "riemann.c",ProblemTypes,(PetscEnum)(problem),(PetscEnum*)&problem,
+               NULL); CHKERRQ(ierr);
+    ierr = PetscOptionsEnd(); CHKERRQ(ierr);
+
+    // call the initializer for the given case
+    // (it allocates list of strings in user->field_names thus PetscFree below)
+    ierr = (*InitializerPtrs[problem])(&user); CHKERRQ(ierr);
 
     // create grid
     ierr = DMDACreate1d(PETSC_COMM_WORLD,DM_BOUNDARY_NONE,4,
@@ -107,8 +117,9 @@ int main(int argc,char **argv) {
                (user.field_names)[k],qnorm); CHKERRQ(ierr);
     }
 
+    // free memory
     VecDestroy(&q);  TSDestroy(&ts);  DMDestroy(&da);
-    ierr = DestroyCase(&user); CHKERRQ(ierr);
+    ierr = PetscFree(user.field_names); CHKERRQ(ierr);
     return PetscFinalize();
 }
 
