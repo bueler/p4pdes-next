@@ -3,10 +3,9 @@ static char help[] =
 "    q_t + F(t,x,q)_x = g(t,x,q)\n"
 "where solution q(t,x), flux F(t,x,q), and source g(t,x,q) are column vectors\n"
 "of length n.  Option prefix rie_.  The domain is (t,x) in [0,T]x[a,b].\n"
-"The initial condition is q(0,x) = f(x).\n"
-"  The flux may be of the form\n"
-"F(t,x,q) = A(t,x,q) q  (but this is not actually required).  Uses finite\n"
-"volumes and a Riemann solver\n"
+"The initial condition is q(0,x) = f(x).  The flux may be of the form\n"
+"    F(t,x,q) = A(t,x,q) q\n"
+"but this is not required.  Uses finite volumes and a Riemann solver\n"
 "    F = faceflux(t,x,qleft,qright)\n"
 "at cell faces.  That is, Godunov's method is used: at each cell face use the\n"
 "Riemann solver to compute the value on the cell face going forward in time.\n"
@@ -15,10 +14,9 @@ static char help[] =
 "    F = bdryflux_b(t,qleft),\n"
 "which allows at least reflecting and outflow boundary conditions.\n"
 "  Use -problem X to select a problem from:\n"
-"    acoustic   classical wave equation in n=2 system form\n"
+"    acoustic   classical wave equation in n=2 system form [default]\n"
 "    swater     shallow water equations (n=2)\n"
-"Defaults to acoustic.\n"
-"  Use options like these for further information and control\n"
+"These PETSc options, among others, give further information and control\n"
 "    -da_grid_x\n"
 "    -ts_monitor\n"
 "    -ts_monitor_solution draw -draw_pause 0.1\n"
@@ -29,10 +27,8 @@ static char help[] =
 
 #include <petsc.h>
 
-/* The struct "ProblemCtx" is defined in cases.h, including these problems:
-   acoustic
-Functions CreateCase(), DestroyCase() are also defined in cases.h, and called
-in main() below. */
+/* The struct "ProblemCtx" is defined in cases.h, plus CreateCase() and
+DestroyCase().  See comments in cases.h for adding new problems. */
 #include "cases.h"
 
 extern PetscErrorCode FormInitial(DMDALocalInfo*, Vec, PetscReal, ProblemCtx*);
@@ -51,7 +47,9 @@ int main(int argc,char **argv) {
     PetscReal        hx, qnorm, t0, tf;
 
     PetscInitialize(&argc,&argv,(char*)0,help);
-    ierr = CreateCase(0,&problem,&user); CHKERRQ(ierr);
+
+    // get which problem we are solving (reads option -problem)
+    ierr = CreateCase(&problem,&user); CHKERRQ(ierr);
 
     // create grid
     ierr = DMDACreate1d(PETSC_COMM_WORLD,DM_BOUNDARY_NONE,4,
@@ -118,13 +116,13 @@ int main(int argc,char **argv) {
 PetscErrorCode FormInitial(DMDALocalInfo *info, Vec q, PetscReal t0, ProblemCtx *user) {
     PetscErrorCode   ierr;
     const PetscReal  hx = (user->b_right - user->a_left) / info->mx;
-    PetscInt         i;
+    PetscInt         j;
     PetscReal        x, *aq;
 
     ierr = DMDAVecGetArray(info->da, q, &aq); CHKERRQ(ierr);
-    for (i=info->xs; i<info->xs+info->xm; i++) {
-        x = user->a_left + (i+0.5) * hx;
-        ierr = user->f_initial(t0,x,&aq[(info->dof)*i]); CHKERRQ(ierr);
+    for (j=info->xs; j<info->xs+info->xm; j++) {
+        x = user->a_left + (j+0.5) * hx;
+        ierr = user->f_initial(t0,x,&aq[(info->dof)*j]); CHKERRQ(ierr);
     }
     ierr = DMDAVecRestoreArray(info->da, q, &aq); CHKERRQ(ierr);
     return 0;
@@ -134,46 +132,48 @@ PetscErrorCode FormInitial(DMDALocalInfo *info, Vec q, PetscReal t0, ProblemCtx 
 // FIXME implement slope limiters
 // FIXME address nonlinear cases of rarefaction and shock
 
-// Right-hand-side of method-of-lines discretization of PDE.  Implements
-// Gudonov (Riemann-solver upwind) method.
+// Right-hand-side of method-of-lines discretization form of PDE.  Implements
+// Gudonov (i.e. Riemann-solver upwind) method.
 PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
         PetscReal *aq, PetscReal *aG, void *ctx) {
     PetscErrorCode   ierr;
     ProblemCtx       *user = (ProblemCtx*)ctx;
+    const PetscInt   n = info->dof;
     const PetscReal  hx = (user->b_right - user->a_left) / info->mx;
-    PetscInt         i, k;
+    PetscInt         j, k;
     PetscReal        x, *Fl, *Fr;     // Fl,Fr hold current cell face fluxes
 
     //ierr = PetscPrintf(PETSC_COMM_SELF,
     //    "xs=%d,xm=%d,mx=%d,dof=%d\n",info->xs,info->xm,info->mx,info->dof); CHKERRQ(ierr);
-    ierr = PetscMalloc1(info->dof,&Fl); CHKERRQ(ierr);
-    ierr = PetscMalloc1(info->dof,&Fr); CHKERRQ(ierr);
+    ierr = PetscMalloc1(n,&Fl); CHKERRQ(ierr);
+    ierr = PetscMalloc1(n,&Fr); CHKERRQ(ierr);
 
-    // get flux at left boundary (of first cell owned by process)
+    // get left-face flux Fl for first cell owned by process; may be at x=a
     if (info->xs == 0) {
-        ierr = user->bdryflux_a(t,&aq[(info->dof)*(info->xs)],Fl); CHKERRQ(ierr);
+        ierr = user->bdryflux_a(t,&aq[n*(info->xs)],Fl); CHKERRQ(ierr);
     } else {
         x = user->a_left + (info->xs+0.5) * hx;
-        ierr = user->faceflux(t,x-hx/2.0,&aq[(info->dof)*(info->xs-1)],
-                                         &aq[(info->dof)*(info->xs)],Fl); CHKERRQ(ierr);
+        ierr = user->faceflux(t,x-hx/2.0,&aq[n*(info->xs-1)],
+                                         &aq[n*(info->xs)],Fl); CHKERRQ(ierr);
     }
 
-    // i counts cell center
-    for (i = info->xs; i < info->xs + info->xm; i++) {
-        x = user->a_left + (i+0.5) * hx;
-        // aG[n i + k]  filled from g(t,x,u) first
-        ierr = user->g_source(t,x,&aq[(info->dof)*i],&aG[(info->dof)*i]); CHKERRQ(ierr);
-        // get right-face flux for cell
-        if (i == info->mx-1) {
-            ierr = user->bdryflux_b(t,&aq[(info->dof)*i],Fr); CHKERRQ(ierr);
+    // for each owned cell, compute RHS  G(t,x,q)
+    for (j = info->xs; j < info->xs + info->xm; j++) {   // x_j is cell center
+        x = user->a_left + (j+0.5) * hx;
+        // set aG[n j + k] = g(t,x_j,u)_k
+        ierr = user->g_source(t,x,&aq[n*j],&aG[n*j]); CHKERRQ(ierr);
+        // get right-face flux Fr for cell; may be at x=b
+        if (j == info->mx-1) {
+            ierr = user->bdryflux_b(t,&aq[n*j],Fr); CHKERRQ(ierr);
         } else {
-            ierr = user->faceflux(t,x+hx/2.0,&aq[(info->dof)*i],
-                                             &aq[(info->dof)*(i+1)],Fr); CHKERRQ(ierr);
+            ierr = user->faceflux(t,x+hx/2.0,&aq[n*j],
+                                             &aq[n*(j+1)],Fr); CHKERRQ(ierr);
         }
-        // compute RHS
-        for (k = 0; k < info->dof; k++)
-            aG[(info->dof)*i+k] += (Fl[k] - Fr[k]) / hx;
-        // transfer Fr to Fl
+        // complete the RHS:
+        //   aG[n j + k] = g(t,x_j,u)_k + (F_{j-1/2}_k - F_{j+1/2}_k) / hx
+        for (k = 0; k < n; k++)
+            aG[n*j+k] += (Fl[k] - Fr[k]) / hx;
+        // transfer Fr to Fl, for next pass through loop
         for (k = 0; k < info->dof; k++)
             Fl[k] = Fr[k];
     }
