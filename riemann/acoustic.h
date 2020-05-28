@@ -35,15 +35,15 @@ cases.
 
 // prefix acoustic_ is essentially a namespace
 
-const PetscReal acoustic_K0 = 0.25,
-                acoustic_rho0 = 1.0;
-PetscReal       acoustic_Z0;   // see AcousticInitializer()
+static const PetscReal acoustic_K0 = 0.25,
+                       acoustic_rho0 = 1.0;
+static PetscReal       acoustic_Z0;   // see AcousticInitializer()
 
-const char acoustic_pname[50] = "p (pressure)",
-           acoustic_uname[50] = "u (velocity)";
+static const char acoustic_pname[50] = "p (pressure)",
+                  acoustic_uname[50] = "u (velocity)";
 
 // this initial condition is on pages 50--51 of LeVeque
-PetscErrorCode acoustic_f(PetscReal t, PetscReal x, PetscReal *q) {
+static PetscErrorCode acoustic_f(PetscReal t, PetscReal x, PetscReal *q) {
     q[0] = 0.5 * PetscExpReal(-80.0*x*x);
     if (x > -0.3 && x < -0.1)
         q[0] += 0.5;
@@ -52,38 +52,41 @@ PetscErrorCode acoustic_f(PetscReal t, PetscReal x, PetscReal *q) {
 }
 
 // no source term
-PetscErrorCode acoustic_g(PetscReal t, PetscReal x, PetscReal *q, PetscReal *g) {
+static PetscErrorCode acoustic_g(PetscReal t, PetscReal x, PetscReal *q, PetscReal *g) {
     g[0] = 0.0;
     g[1] = 0.0;
     return 0;
 }
 
+// evaluate F(q)
+static inline void acoustic_evalflux(PetscReal p, PetscReal u, PetscReal *F) {
+    F[0] = acoustic_K0 * u;
+    F[1] = (1.0/acoustic_rho0) * p;
+}
+
 // closed end boundary condition:  u(t,a) = 0
-PetscErrorCode acoustic_bdryflux_a(PetscReal t, PetscReal *qr, PetscReal *F) {
+static PetscErrorCode acoustic_bdryflux_a(PetscReal t, PetscReal *qr, PetscReal *F) {
     const PetscReal  pa = qr[0] - acoustic_Z0 * qr[1], // p(t,a) = p(t_n,x_0) - Z0 u(t_n,x_0)
                      ua = 0.0;                         // u(t,a) = 0
-    F[0] = acoustic_K0 * ua;
-    F[1] = (1.0/acoustic_rho0) * pa;
+    acoustic_evalflux(pa,ua,F);
     return 0;
 }
 
 // outflow boundary condition:  p(t,b) - Z0 u(t,b) = 0  (zero the incoming Riemann invariant)
-PetscErrorCode acoustic_bdryflux_b(PetscReal t, PetscReal *ql, PetscReal *F) {
+static PetscErrorCode acoustic_bdryflux_b(PetscReal t, PetscReal *ql, PetscReal *F) {
     const PetscReal  tmp = ql[0] + acoustic_Z0 * ql[1],
                      pb = 0.5 * tmp,
                      ub = 0.5 * tmp / acoustic_Z0;
-    F[0] = acoustic_K0 * ub;
-    F[1] = (1.0/acoustic_rho0) * pb;
+    acoustic_evalflux(pb,ub,F);
     return 0;
 }
 
 // compute flux at internal faces from left and right values of q = [p, u]
-PetscErrorCode acoustic_faceflux(PetscReal t, PetscReal x,
+static PetscErrorCode acoustic_faceflux(PetscReal t, PetscReal x,
        PetscReal *ql, PetscReal *qr, PetscReal *F) {
     const PetscReal  pface = 0.5 * (qr[0] + ql[0] + acoustic_Z0 * (ql[1] - qr[1])),
                      uface = 0.5 * ((1.0/acoustic_Z0) * (ql[0] - qr[0]) + ql[1] + qr[1]);
-    F[0] = acoustic_K0 * uface;
-    F[1] = (1.0/acoustic_rho0) * pface;
+    acoustic_evalflux(pface,uface,F);
     return 0;
 }
 

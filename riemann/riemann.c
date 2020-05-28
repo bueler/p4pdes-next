@@ -147,7 +147,6 @@ PetscErrorCode FormInitial(DMDALocalInfo *info, Vec q, PetscReal t0, ProblemCtx 
 
 
 // FIXME implement slope limiters
-// FIXME address nonlinear cases of rarefaction and shock
 
 // Right-hand-side of method-of-lines discretization form of PDE.  Implements
 // Gudonov (i.e. Riemann-solver upwind) method.

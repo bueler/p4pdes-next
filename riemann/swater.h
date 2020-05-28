@@ -16,60 +16,39 @@ q1(x) = 0.0
   University Press, 2002.
 */
 
-const PetscReal swater_grav = 1.0;
+static const PetscReal swater_grav = 1.0;
 
-const char swater_hname[50] = "h (surface height)",
-           swater_huname[50] = "h u (height * velocity)";
+static const char swater_hname[50] = "h (surface height)",
+                  swater_huname[50] = "h u (height * velocity)";
 
 // see LeVeque Figure 13.1
-PetscErrorCode swater_hump(PetscReal t, PetscReal x, PetscReal *q) {
+static PetscErrorCode swater_hump(PetscReal t, PetscReal x, PetscReal *q) {
     q[0] = 1.0 + 0.4 * PetscExpReal(- 5.0 * x*x);
     q[1] = 0.0;
     return 0;
 }
 
 // see LeVeque Figure 13.4
-PetscErrorCode swater_dam(PetscReal t, PetscReal x, PetscReal *q) {
+static PetscErrorCode swater_dam(PetscReal t, PetscReal x, PetscReal *q) {
     q[0] = (x < 0) ? 3.0 : 1.0;
     q[1] = 0.0;
     return 0;
 }
 
-PetscErrorCode swater_g(PetscReal t, PetscReal x, PetscReal *q, PetscReal *g) {
+static PetscErrorCode swater_g(PetscReal t, PetscReal x, PetscReal *q, PetscReal *g) {
     g[0] = 0.0;
     g[1] = 0.0;
     return 0;
 }
 
-// FIXME for quick-and-dirty outflow
-extern PetscErrorCode swater_faceflux(PetscReal,PetscReal,PetscReal*,PetscReal*,PetscReal*);
-
-// FIXME want outflow boundary condition at x=a
-PetscErrorCode swater_bdryflux_a(PetscReal t, PetscReal *qr, PetscReal *F) {
-    PetscErrorCode ierr;
-    if (qr[0] <= 0.0) {
-        SETERRQ2(PETSC_COMM_SELF,1,
-                 "h = qr[0] = %g is nonpositive at (t=%g,a)\n",
-                 qr[0],t);
-    }
-    ierr = swater_faceflux(t,-5.0,qr,qr,F); CHKERRQ(ierr);
-    return 0;
-}
-
-// FIXME want outflow boundary condition at x=b
-PetscErrorCode swater_bdryflux_b(PetscReal t, PetscReal *ql, PetscReal *F) {
-    PetscErrorCode ierr;
-    if (ql[0] <= 0.0) {
-        SETERRQ2(PETSC_COMM_SELF,1,
-                 "h = qr[0] = %g is nonpositive at (t=%g,b)\n",
-                 ql[0],t);
-    }
-    ierr = swater_faceflux(t,5.0,ql,ql,F); CHKERRQ(ierr);
-    return 0;
+// evaluate F(q); for flux formula see page 255 of LeVeque
+static inline void swater_evalflux(PetscReal h, PetscReal hu, PetscReal *F) {
+    F[0] = hu;
+    F[1] = (hu*hu / h) + 0.5 * swater_grav * h*h;
 }
 
 // compute flux at internal faces from left and right values of q = [h, h u]
-PetscErrorCode swater_faceflux(PetscReal t, PetscReal x,
+static PetscErrorCode swater_faceflux(PetscReal t, PetscReal x,
        PetscReal *ql, PetscReal *qr, PetscReal *F) {
     // assert h > 0 on both sides
     if (ql[0] <= 0.0) {
@@ -108,9 +87,31 @@ PetscErrorCode swater_faceflux(PetscReal t, PetscReal x,
         hface = (v1l - v0r) / (beta1 - beta0);
         huface = (beta1 * v0r - beta0 * v1l) / (beta1 - beta0);
     }
-    // for flux formula see page 255 of LeVeque
-    F[0] = huface;
-    F[1] = (huface*huface / hface) + 0.5 * swater_grav * hface*hface;
+    swater_evalflux(hface,huface,F);
+    return 0;
+}
+
+// FIXME want outflow boundary condition at x=a
+static PetscErrorCode swater_bdryflux_a(PetscReal t, PetscReal *qr, PetscReal *F) {
+    PetscErrorCode ierr;
+    if (qr[0] <= 0.0) {
+        SETERRQ2(PETSC_COMM_SELF,1,
+                 "h = qr[0] = %g is nonpositive at (t=%g,a)\n",
+                 qr[0],t);
+    }
+    ierr = swater_faceflux(t,-5.0,qr,qr,F); CHKERRQ(ierr);
+    return 0;
+}
+
+// FIXME want outflow boundary condition at x=b
+static PetscErrorCode swater_bdryflux_b(PetscReal t, PetscReal *ql, PetscReal *F) {
+    PetscErrorCode ierr;
+    if (ql[0] <= 0.0) {
+        SETERRQ2(PETSC_COMM_SELF,1,
+                 "h = qr[0] = %g is nonpositive at (t=%g,b)\n",
+                 ql[0],t);
+    }
+    ierr = swater_faceflux(t,5.0,ql,ql,F); CHKERRQ(ierr);
     return 0;
 }
 
