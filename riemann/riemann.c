@@ -2,27 +2,29 @@ static char help[] =
 "Solve a hyperbolic system in one space dimension (1D):\n"
 "    q_t + F(t,x,q)_x = g(t,x,q)\n"
 "where solution q(t,x), flux F(t,x,q), and source g(t,x,q) are column vectors\n"
-"of length n.  Option prefix rie_.  The domain is (t,x) in [0,T]x[a,b].\n"
-"The initial condition is q(0,x) = f(x).  The flux may be of the form\n"
+"of length n.  The domain is (t,x) in [0,T]x[a,b].  The initial condition is\n"
+"q(0,x) = f(x).  The flux may be of the form\n"
 "    F(t,x,q) = A(t,x,q) q\n"
-"but this is not required.  Uses finite volumes and a Riemann solver\n"
+"but this is not required.  Uses finite volumes (grid values represent\n"
+"cell averages) and a case-specific Riemann solver\n"
 "    F = faceflux(t,x,qleft,qright)\n"
-"at cell faces.  That is, Godunov's method is used: at each cell face use the\n"
+"at cell faces.  Godunov's method is used: at each cell face use the\n"
 "Riemann solver to compute the value on the cell face going forward in time.\n"
-"Similarly, it uses flux boundary conditions\n"
+"Similarly, case-specific flux boundary conditions are used:\n"
 "    F = bdryflux_a(t,qright),\n"
 "    F = bdryflux_b(t,qleft),\n"
-"which allows at least reflecting and outflow boundary conditions.\n"
-"  Use -problem X to select a problem from:\n"
-"    acoustic   classical wave equation in n=2 system form [default]\n"
-"    swater     shallow water equations (n=2)\n"
+"Reflecting and outflow boundary conditions are among the implemented types.\n"
+"Use option -problem to select the problem case:\n"
+"    -problem acoustic   wave equation in system form (n=2) [default]\n"
+"    -problem swater     shallow water equations (n=2)\n"
 "These PETSc options, among others, give further information and control\n"
-"    -da_grid_x\n"
-"    -ts_monitor\n"
-"    -ts_monitor_solution draw -draw_pause 0.1\n"
-"    -ts_type                     [default is rk]\n"
-"      -ts_rk_type                [default is 3bs]\n"
-"See the makefile for test examples, and do 'make test' to test.\n";
+"    -da_grid_x M                             [grid of M points]\n"
+"    -ts_monitor                              [shows time steps]\n"
+"    -ts_monitor_solution draw                [generate simple movie]\n"
+"        -draw_pause 0.1 -draw_size 1000,1000 [control the movie]\n"
+"    -ts_type                                 [default is rk]\n"
+"        -ts_rk_type X                        [default is 3bs]\n"
+"See the makefile for test examples, and do 'make test' to test.\n\n";
 
 
 #include <petsc.h>
@@ -67,9 +69,12 @@ int main(int argc,char **argv) {
     ierr = DMSetFromOptions(da); CHKERRQ(ierr);
     ierr = DMSetUp(da); CHKERRQ(ierr);
     ierr = DMSetApplicationContext(da,&user); CHKERRQ(ierr);
+    ierr = DMDAGetLocalInfo(da,&info); CHKERRQ(ierr);
+    hx = (user.b_right - user.a_left) / info.mx;
+    ierr = DMDASetUniformCoordinates(da,user.a_left+hx/2.0,user.b_right-hx/2.0,
+                                     0.0,1.0,0.0,1.0); CHKERRQ(ierr);
 
     // set field names so that visualization makes sense
-    ierr = DMDAGetLocalInfo(da,&info); CHKERRQ(ierr);
     for (k = 0; k < info.dof; k++) {
         ierr = DMDASetFieldName(da,k,(user.field_names)[k]); CHKERRQ(ierr);
     }
@@ -96,7 +101,6 @@ int main(int argc,char **argv) {
     //ierr = VecView(q,PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
 
     // solve
-    hx = (user.b_right - user.a_left) / info.mx;
     ierr = PetscPrintf(PETSC_COMM_WORLD,
                "solving problem %s\n",ProblemTypes[problem]); CHKERRQ(ierr);
     ierr = PetscPrintf(PETSC_COMM_WORLD,
