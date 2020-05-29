@@ -24,6 +24,7 @@ static char help[] =
 "        -draw_pause 0.1 -draw_size 2000,200  [control the movie]\n"
 "    -ts_type                                 [default is rk]\n"
 "        -ts_rk_type X                        [default is 3bs]\n"
+"    -ts_dt 0.01 -ts_adapt_type none          [turn off adaptive]\n"
 "See the makefile for test examples, and do 'make test' to test.\n\n";
 
 
