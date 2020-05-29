@@ -34,6 +34,26 @@ static char help[] =
 about how to add new problems. */
 #include "cases.h"
 
+// minmod(a,b) as define on LeVeque page 111
+static PetscReal minmod(PetscReal a, PetscReal b) {
+    if (a*b > 0)
+        return (PetscAbs(a) < PetscAbs(b)) ? a : b;
+    else
+        return 0.0;
+}
+
+// FIXME superbee
+
+// FIXME mc
+
+typedef enum {NONE,
+              MINMOD} LimiterType;
+static const char* LimiterTypes[] = {"none",
+                                     "minmod",
+                                     "LimiterType", "", NULL};
+
+static LimiterType limiter = NONE;     // slope-limiter
+
 extern PetscErrorCode FormInitial(DMDALocalInfo*, Vec, PetscReal, ProblemCtx*);
 extern PetscErrorCode GetMaxSpeed(DMDALocalInfo*, Vec, PetscReal, PetscReal*, ProblemCtx*);
 extern PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo*, PetscReal,
@@ -47,7 +67,7 @@ int main(int argc,char **argv) {
     DMDALocalInfo    info;               // structured grid info
     ProblemType      problem = ACOUSTIC; // which problem we are solving
     ProblemCtx       user;               // problem-specific information
-    PetscInt         k, steps;
+    PetscInt         swidth, k, steps;
     PetscBool        flg;
     PetscReal        hx, qnorm, t0, tf, dt, c;
 
@@ -60,6 +80,9 @@ int main(int argc,char **argv) {
     ierr = PetscOptionsEnum("-problem", "problem type",
                "riemann.c",ProblemTypes,(PetscEnum)(problem),(PetscEnum*)&problem,
                NULL); CHKERRQ(ierr);
+    ierr = PetscOptionsEnum("-limiter", "limiter type",
+               "riemann.c",LimiterTypes,(PetscEnum)(limiter),(PetscEnum*)&limiter,
+               NULL); CHKERRQ(ierr);
     ierr = PetscOptionsEnd(); CHKERRQ(ierr);
 
     // call the initializer for the given case
@@ -67,8 +90,9 @@ int main(int argc,char **argv) {
     ierr = (*InitializerPtrs[problem])(&user); CHKERRQ(ierr);
 
     // create grid
+    swidth = (limiter == NONE) ? 1 : 2;
     ierr = DMDACreate1d(PETSC_COMM_WORLD,DM_BOUNDARY_NONE,4,
-                        user.n_dim,1,NULL,&da); CHKERRQ(ierr);
+                        user.n_dim,swidth,NULL,&da); CHKERRQ(ierr);
     ierr = DMSetFromOptions(da); CHKERRQ(ierr);
     ierr = DMSetUp(da); CHKERRQ(ierr);
     ierr = DMSetApplicationContext(da,&user); CHKERRQ(ierr);
@@ -180,31 +204,69 @@ PetscErrorCode GetMaxSpeed(DMDALocalInfo *info, Vec q, PetscReal t,
 }
 
 
-// FIXME implement slope limiters
+static inline void ncopy(PetscInt n, PetscReal *src, PetscReal *tgt) {
+    PetscInt k;
+    for (k = 0; k < n; k++)
+        tgt[k] = src[k];
+}
+
+static inline void slopemodify(PetscInt n, PetscReal hx,
+                               PetscReal *sigl, PetscReal *sigr,
+                               PetscReal *Ql, PetscReal *Qr) {
+    PetscInt k;
+    // formulas on LeVeque page 193
+    for (k = 0; k < n; k++) {
+        Ql[k] += (hx/2.0) * sigl[k];
+        Qr[k] -= (hx/2.0) * sigr[k];
+    }
+}
 
 // Right-hand-side of method-of-lines discretization form of PDE.  Implements
-// Gudonov (i.e. Riemann-solver upwind) method.
+// Gudonov (i.e. Riemann-solver upwind) method with a slope limiter.
 PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
         PetscReal *aq, PetscReal *aG, void *ctx) {
     PetscErrorCode   ierr;
     ProblemCtx       *user = (ProblemCtx*)ctx;
     const PetscInt   n = info->dof;
     const PetscReal  hx = (user->b_right - user->a_left) / info->mx;
+    Vec              sig;
     PetscInt         j, k;
-    PetscReal        x, *Fl, *Fr;     // Fl,Fr hold current cell face fluxes
+    PetscReal        x, *asig, sl, sr,
+                     *Ql, *Qr,  // slope-limited values of solution at either
+                                //     side of current face
+                     *Fl, *Fr;  // face fluxes on either end of current cell
 
-    //ierr = PetscPrintf(PETSC_COMM_SELF,
-    //    "xs=%d,xm=%d,mx=%d,dof=%d\n",info->xs,info->xm,info->mx,info->dof); CHKERRQ(ierr);
-    ierr = PetscMalloc1(n,&Fl); CHKERRQ(ierr);
-    ierr = PetscMalloc1(n,&Fr); CHKERRQ(ierr);
+    // for each owned cell get limited slope
+    ierr = DMCreateLocalVector(info->da,&sig); CHKERRQ(ierr);
+    ierr = VecSet(sig,0.0); CHKERRQ(ierr);  // implements limiter == NONE
+    ierr = DMDAVecGetArray(info->da,sig,&asig); CHKERRQ(ierr);
+    if (limiter == MINMOD) {
+        for (j = info->xs-1; j < info->xs + info->xm+1; j++) {   // x_j is cell center
+            for (k = 0; k < n; k++) {
+                if (j < 0 || j > info->mx-1)
+                    continue;
+                if (j == 0 || j == info->mx-1) {
+                    asig[n*j+k] = 0.0;  // FIXME compute slope?
+                } else {
+                    sl = (aq[n*j + k] - aq[n*(j-1) + k]) / hx;
+                    sr = (aq[n*(j+1) + k] - aq[n*j + k]) / hx;
+                    asig[n*j+k] = minmod(sl,sr);
+                }
+            }
+        }
+    }
 
     // get left-face flux Fl for first cell owned by process; may be at x=a
+    ierr = PetscMalloc4(n,&Ql,n,&Qr,n,&Fl,n,&Fr); CHKERRQ(ierr);
     if (info->xs == 0) {
+        // FIXME slope limit right?
         ierr = user->bdryflux_a(t,&aq[n*(info->xs)],Fl); CHKERRQ(ierr);
     } else {
         x = user->a_left + (info->xs+0.5) * hx;
-        ierr = user->faceflux(t,x-hx/2.0,&aq[n*(info->xs-1)],
-                                         &aq[n*(info->xs)],Fl); CHKERRQ(ierr);
+        ncopy(n,&aq[n*(info->xs-1)],Ql);
+        ncopy(n,&aq[n*(info->xs)],Qr);
+        slopemodify(n,hx,&asig[n*(info->xs-1)],&asig[n*(info->xs)],Ql,Qr);
+        ierr = user->faceflux(t,x-hx/2.0,Ql,Qr,Fl); CHKERRQ(ierr);
     }
 
     // for each owned cell, compute RHS  G(t,x,q)
@@ -214,22 +276,25 @@ PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
         ierr = user->g_source(t,x,&aq[n*j],&aG[n*j]); CHKERRQ(ierr);
         // get right-face flux Fr for cell; may be at x=b
         if (j == info->mx-1) {
+            // FIXME slope limit left?
             ierr = user->bdryflux_b(t,&aq[n*j],Fr); CHKERRQ(ierr);
         } else {
-            ierr = user->faceflux(t,x+hx/2.0,&aq[n*j],
-                                             &aq[n*(j+1)],Fr); CHKERRQ(ierr);
+            ncopy(n,&aq[n*j],Ql);
+            ncopy(n,&aq[n*(j+1)],Qr);
+            slopemodify(n,hx,&asig[n*j],&asig[n*(j+1)],Ql,Qr);
+            ierr = user->faceflux(t,x+hx/2.0,Ql,Qr,Fr); CHKERRQ(ierr);
         }
         // complete the RHS:
         //   aG[n j + k] = g(t,x_j,u)_k + (F_{j-1/2}_k - F_{j+1/2}_k) / hx
         for (k = 0; k < n; k++)
             aG[n*j+k] += (Fl[k] - Fr[k]) / hx;
-        // transfer Fr to Fl, for next pass through loop
-        for (k = 0; k < info->dof; k++)
-            Fl[k] = Fr[k];
+        ncopy(n,Fr,Fl); // transfer Fr to Fl, for next loop
     }
 
-    ierr = PetscFree(Fl); CHKERRQ(ierr);
-    ierr = PetscFree(Fr); CHKERRQ(ierr);
+    // clean up
+    ierr = PetscFree4(Ql,Qr,Fl,Fr); CHKERRQ(ierr);
+    ierr = DMDAVecRestoreArray(info->da,sig,&asig); CHKERRQ(ierr);
+    ierr = VecDestroy(&sig); CHKERRQ(ierr);
     return 0;
 }
 
