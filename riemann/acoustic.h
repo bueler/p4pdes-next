@@ -43,10 +43,16 @@ static const char acoustic_pname[50] = "p (pressure)",
                   acoustic_uname[50] = "u (velocity)";
 
 // this initial condition is on pages 50--51 of LeVeque
-static PetscErrorCode acoustic_f(PetscReal t, PetscReal x, PetscReal *q) {
+static PetscErrorCode acoustic_leveque(PetscReal t, PetscReal x, PetscReal *q) {
     q[0] = 0.5 * PetscExpReal(-80.0*x*x);
     if (x > -0.3 && x < -0.1)
         q[0] += 0.5;
+    q[1] = 0.0;
+    return 0;
+}
+
+static PetscErrorCode acoustic_stump(PetscReal t, PetscReal x, PetscReal *q) {
+    q[0] = (x > -0.3 && x < 0.3) ? 1.0 : 0.0;
     q[1] = 0.0;
     return 0;
 }
@@ -97,12 +103,25 @@ static PetscErrorCode acoustic_maxspeed(PetscReal t, PetscReal x, PetscReal *q,
     return 0;
 }
 
+typedef enum {AC_LEVEQUE,AC_STUMP} AcousticInitialType;
+static const char* AcousticInitialTypes[] = {"leveque","stump",
+                                             "AcousticInitialType", "", NULL};
+
 PetscErrorCode  AcousticInitializer(ProblemCtx *user) {
-    PetscErrorCode  ierr;
+    PetscErrorCode       ierr;
+    AcousticInitialType  initial = AC_LEVEQUE;
 
     if (user == NULL) {
         SETERRQ(PETSC_COMM_SELF,1,"ProblemCtx *user is NULL\n");
     }
+
+    ierr = PetscOptionsBegin(PETSC_COMM_WORLD,"",
+               "options for acoustic solver (-problem acoustic)",""); CHKERRQ(ierr);
+    ierr = PetscOptionsEnum("-initial", "acoustic initial condition",
+               "riemann.c",AcousticInitialTypes,(PetscEnum)(initial),(PetscEnum*)&initial,
+               NULL); CHKERRQ(ierr);
+    ierr = PetscOptionsEnd(); CHKERRQ(ierr);
+
     user->n_dim = 2;
     ierr = PetscMalloc1(2,&(user->field_names)); CHKERRQ(ierr);
     (user->field_names)[0] = (char*)acoustic_pname;
@@ -111,7 +130,7 @@ PetscErrorCode  AcousticInitializer(ProblemCtx *user) {
     user->b_right = 1.0;
     user->t0_default = 0.0;
     user->tf_default = 1.0;
-    user->f_initial = &acoustic_f;
+    user->f_initial = (initial == AC_LEVEQUE) ? &acoustic_leveque : &acoustic_stump;
     user->g_source = &acoustic_g;
     user->bdryflux_a = &acoustic_bdryflux_a;
     user->bdryflux_b = &acoustic_bdryflux_b;
