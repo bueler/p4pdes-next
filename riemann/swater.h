@@ -130,15 +130,13 @@ static PetscErrorCode swater_maxspeed(PetscReal t, PetscReal x, PetscReal *q,
 }
 
 
-typedef enum {HUMP,
-              DAM} SWInitialType;
-static const char* SWInitialTypes[] = {"hump",
-                                       "dam",
+typedef enum {SW_HUMP,SW_DAM} SWInitialType;
+static const char* SWInitialTypes[] = {"hump","dam",
                                        "SWInitialType", "", NULL};
 
 PetscErrorCode  SWaterInitializer(ProblemCtx *user) {
     PetscErrorCode  ierr;
-    SWInitialType   initial = HUMP;
+    SWInitialType   initial = SW_HUMP;
 
     if (user == NULL) {
         SETERRQ(PETSC_COMM_SELF,1,"ProblemCtx *user is NULL\n");
@@ -150,6 +148,7 @@ PetscErrorCode  SWaterInitializer(ProblemCtx *user) {
                "riemann.c",SWInitialTypes,(PetscEnum)(initial),(PetscEnum*)&initial,
                NULL); CHKERRQ(ierr);
     ierr = PetscOptionsEnd(); CHKERRQ(ierr);
+
     user->n_dim = 2;
     ierr = PetscMalloc1(2,&(user->field_names)); CHKERRQ(ierr);
     (user->field_names)[0] = (char*)swater_hname;
@@ -158,7 +157,7 @@ PetscErrorCode  SWaterInitializer(ProblemCtx *user) {
     user->b_right = 5.0;
     user->t0_default = 0.0;
     user->tf_default = 3.0;
-    user->f_initial = (initial == HUMP) ? &swater_hump : &swater_dam;
+    user->f_initial = (initial == SW_HUMP) ? &swater_hump : &swater_dam;
     user->g_source = &swater_g;
     user->bdryflux_a = &swater_bdryflux_a;
     user->bdryflux_b = &swater_bdryflux_b;
