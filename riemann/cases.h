@@ -32,6 +32,7 @@ typedef PetscErrorCode ProblemInitializer(ProblemCtx*);
 /* To add a new problem make edits in the following BLOCK. */
 #include "acoustic.h"
 #include "swater.h"
+// FIXME add "burgers.h" scalar case
 typedef enum {ACOUSTIC,
               SWATER} ProblemType;
 static const char* ProblemTypes[] = {"acoustic",
