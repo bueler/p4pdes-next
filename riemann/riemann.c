@@ -36,20 +36,14 @@ about how to add new problems. */
 
 // minmod(a,b) as define on LeVeque page 111
 static PetscReal minmod(PetscReal a, PetscReal b) {
-    if (a*b > 0)
+    if (a*b > 0) // both signs agree
         return (PetscAbs(a) < PetscAbs(b)) ? a : b;
     else
         return 0.0;
 }
 
-// FIXME superbee
-
-// FIXME mc
-
-typedef enum {NONE,
-              MINMOD} LimiterType;
-static const char* LimiterTypes[] = {"none",
-                                     "minmod",
+typedef enum {NONE,MINMOD,MC} LimiterType;
+static const char* LimiterTypes[] = {"none","minmod","mc",
                                      "LimiterType", "", NULL};
 
 static LimiterType limiter = NONE;     // slope-limiter
@@ -210,15 +204,12 @@ static inline void ncopy(PetscInt n, PetscReal *src, PetscReal *tgt) {
         tgt[k] = src[k];
 }
 
-static inline void slopemodify(PetscInt n, PetscReal hx,
-                               PetscReal *sigl, PetscReal *sigr,
-                               PetscReal *Ql, PetscReal *Qr) {
+static inline void slopemodify(PetscInt n, PetscReal C,
+                               PetscReal *sig, PetscReal *Q_in,
+                               PetscReal *Q_out) {
     PetscInt k;
-    // formulas on LeVeque page 193
-    for (k = 0; k < n; k++) {
-        Ql[k] += (hx/2.0) * sigl[k];
-        Qr[k] -= (hx/2.0) * sigr[k];
-    }
+    for (k = 0; k < n; k++)
+        Q_out[k] = Q_in[k] + C * sig[k];
 }
 
 // Right-hand-side of method-of-lines discretization form of PDE.  Implements
@@ -240,17 +231,22 @@ PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
     ierr = DMCreateLocalVector(info->da,&sig); CHKERRQ(ierr);
     ierr = VecSet(sig,0.0); CHKERRQ(ierr);  // implements limiter == NONE
     ierr = DMDAVecGetArray(info->da,sig,&asig); CHKERRQ(ierr);
-    if (limiter == MINMOD) {
+    if (limiter != NONE) {
         for (j = info->xs-1; j < info->xs + info->xm+1; j++) {   // x_j is cell center
             for (k = 0; k < n; k++) {
                 if (j < 0 || j > info->mx-1)
                     continue;
-                if (j == 0 || j == info->mx-1) {
-                    asig[n*j+k] = 0.0;  // FIXME compute slope?
-                } else {
+                if (j == 0)
+                    asig[n*j+k] = (aq[n*(j+1) + k] - aq[n*j + k]) / hx;
+                else if (j == info->mx-1)
+                    asig[n*j+k] = (aq[n*j + k] - aq[n*(j-1) + k]) / hx;
+                else {
                     sl = (aq[n*j + k] - aq[n*(j-1) + k]) / hx;
                     sr = (aq[n*(j+1) + k] - aq[n*j + k]) / hx;
-                    asig[n*j+k] = minmod(sl,sr);
+                    if (limiter == MINMOD)
+                        asig[n*j+k] = minmod(sl,sr);
+                    else // limiter == MC
+                        asig[n*j+k] = minmod(0.5*(sl+sr),2.0*minmod(sl,sr));
                 }
             }
         }
@@ -259,13 +255,14 @@ PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
     // get left-face flux Fl for first cell owned by process; may be at x=a
     ierr = PetscMalloc4(n,&Ql,n,&Qr,n,&Fl,n,&Fr); CHKERRQ(ierr);
     if (info->xs == 0) {
-        // FIXME slope limit right?
-        ierr = user->bdryflux_a(t,&aq[n*(info->xs)],Fl); CHKERRQ(ierr);
+        // use right slope
+        slopemodify(n,-hx/2.0,&asig[0],&aq[0],Qr);
+        ierr = user->bdryflux_a(t,Qr,Fl); CHKERRQ(ierr);
     } else {
+        // use left and right (limited) slope [left is owned by other process]
         x = user->a_left + (info->xs+0.5) * hx;
-        ncopy(n,&aq[n*(info->xs-1)],Ql);
-        ncopy(n,&aq[n*(info->xs)],Qr);
-        slopemodify(n,hx,&asig[n*(info->xs-1)],&asig[n*(info->xs)],Ql,Qr);
+        slopemodify(n,hx/2.0,&asig[n*(info->xs-1)],&aq[n*(info->xs-1)],Ql);
+        slopemodify(n,-hx/2.0,&asig[n*(info->xs)],&aq[n*(info->xs)],Qr);
         ierr = user->faceflux(t,x-hx/2.0,Ql,Qr,Fl); CHKERRQ(ierr);
     }
 
@@ -276,12 +273,13 @@ PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
         ierr = user->g_source(t,x,&aq[n*j],&aG[n*j]); CHKERRQ(ierr);
         // get right-face flux Fr for cell; may be at x=b
         if (j == info->mx-1) {
-            // FIXME slope limit left?
-            ierr = user->bdryflux_b(t,&aq[n*j],Fr); CHKERRQ(ierr);
+            // user left slope
+            slopemodify(n,hx/2.0,&asig[n*j],&aq[n*j],Ql);
+            ierr = user->bdryflux_b(t,Ql,Fr); CHKERRQ(ierr);
         } else {
-            ncopy(n,&aq[n*j],Ql);
-            ncopy(n,&aq[n*(j+1)],Qr);
-            slopemodify(n,hx,&asig[n*j],&asig[n*(j+1)],Ql,Qr);
+            // use left and right (limited) slope; see formulas LeVeque page 193
+            slopemodify(n,hx/2.0,&asig[n*j],&aq[n*j],Ql);
+            slopemodify(n,-hx/2.0,&asig[n*(j+1)],&aq[n*(j+1)],Qr);
             ierr = user->faceflux(t,x+hx/2.0,Ql,Qr,Fr); CHKERRQ(ierr);
         }
         // complete the RHS:
