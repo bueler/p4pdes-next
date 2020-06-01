@@ -12,6 +12,7 @@ typedef struct {
     char            **field_names;
     PetscReal       a_left, b_right,
                     t0_default, tf_default;
+    PetscBool       periodic_bcs;
     PetscErrorCode  (*f_initial)(PetscReal t, PetscReal x,
                                  PetscReal *q);
     PetscErrorCode  (*g_source)(PetscReal t, PetscReal x, PetscReal *q,

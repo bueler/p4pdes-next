@@ -130,6 +130,7 @@ PetscErrorCode  AcousticInitializer(ProblemCtx *user) {
     user->b_right = 1.0;
     user->t0_default = 0.0;
     user->tf_default = 1.0;
+    user->periodic_bcs = PETSC_FALSE;
     user->f_initial = (initial == AC_LEVEQUE) ? &acoustic_leveque : &acoustic_stump;
     user->g_source = &acoustic_g;
     user->bdryflux_a = &acoustic_bdryflux_a;

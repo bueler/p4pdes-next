@@ -157,6 +157,7 @@ PetscErrorCode  SWaterInitializer(ProblemCtx *user) {
     user->b_right = 5.0;
     user->t0_default = 0.0;
     user->tf_default = 3.0;
+    user->periodic_bcs = PETSC_FALSE;
     user->f_initial = (initial == SW_HUMP) ? &swater_hump : &swater_dam;
     user->g_source = &swater_g;
     user->bdryflux_a = &swater_bdryflux_a;

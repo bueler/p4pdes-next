@@ -5,10 +5,11 @@ static char help[] =
 "of length n.  The domain is (t,x) in [0,T]x[a,b].  The initial condition is\n"
 "q(0,x) = f(x).  The flux may be of the form\n"
 "    F(t,x,q) = A(t,x,q) q\n"
-"but this is not required.  Flux boundary conditions are used:\n"
+"but this is not required.  Flux boundary conditions are used in most cases,\n"
 "    F = bdryflux_a(t,qright)\n"
 "    F = bdryflux_b(t,qleft)\n"
-"Reflecting and outflow boundary conditions are among the implemented types.\n\n"
+"includign reflecting and outflow boundary conditions.  Periodic boundary\n"
+"conditions are also implemented.\n\n"
 "Uses finite volumes (grid values represent cell averages) and a case-specific\n"
 "Riemann solver\n"
 "    F = faceflux(t,x,qleft,qright)\n"
@@ -93,7 +94,7 @@ int main(int argc,char **argv) {
     // create grid
     swidth = (limiter == NONE) ? 1 : 2;
     ierr = DMDACreate1d(PETSC_COMM_WORLD,
-                        DM_BOUNDARY_NONE,
+                        user.periodic_bcs ? DM_BOUNDARY_PERIODIC : DM_BOUNDARY_NONE,
                         4,          // default resolution
                         user.n_dim, // system dimension (d.o.f.)
                         swidth,     // stencil (half) width
@@ -245,11 +246,11 @@ PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
     if (limiter != NONE) {  // following block assumes swidth >= 2
         for (j = info->xs-1; j < info->xs + info->xm+1; j++) {   // x_j is cell center
             for (k = 0; k < n; k++) {
-                if (j < 0 || j > info->mx-1)
+                if ((j < 0 || j > info->mx-1) && user->periodic_bcs == PETSC_FALSE)
                     continue;
-                if (j == 0)
+                if (j == 0 && user->periodic_bcs == PETSC_FALSE)
                     asig[n*j+k] = (aq[n*(j+1) + k] - aq[n*j + k]) / hx;
-                else if (j == info->mx-1)
+                else if (j == info->mx-1 && user->periodic_bcs == PETSC_FALSE)
                     asig[n*j+k] = (aq[n*j + k] - aq[n*(j-1) + k]) / hx;
                 else {
                     if (limiter == FROMM) {
@@ -272,7 +273,7 @@ PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
 
     // get left-face flux Fl for first cell owned by process; may be at x=a
     ierr = PetscMalloc4(n,&Ql,n,&Qr,n,&Fl,n,&Fr); CHKERRQ(ierr);
-    if (info->xs == 0) {
+    if (info->xs == 0 && user->periodic_bcs == PETSC_FALSE) {
         // use right slope
         slopemodify(n,-hx/2.0,&asig[0],&aq[0],Qr);
         ierr = user->bdryflux_a(t,Qr,Fl); CHKERRQ(ierr);
@@ -290,7 +291,7 @@ PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
         // set aG[n j + k] = g(t,x_j,u)_k
         ierr = user->g_source(t,x,&aq[n*j],&aG[n*j]); CHKERRQ(ierr);
         // get right-face flux Fr for cell; may be at x=b
-        if (j == info->mx-1) {
+        if (j == info->mx-1 && user->periodic_bcs == PETSC_FALSE) {
             // user left slope
             slopemodify(n,hx/2.0,&asig[n*j],&aq[n*j],Ql);
             ierr = user->bdryflux_b(t,Ql,Fr); CHKERRQ(ierr);
