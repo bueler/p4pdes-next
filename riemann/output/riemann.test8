@@ -1,0 +1,5 @@
+solving problem acoustic, a system of 2 equations,
+  on 9-point grid with dx=0.222222 and initial dt=0.444444...
+  ... completed 12 steps for 0.0000 <= t <= 1.0000
+  inf-norm of p (pressure) solution: 0.47978
+  inf-norm of u (velocity) solution: 1.03074

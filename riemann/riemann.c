@@ -5,18 +5,25 @@ static char help[] =
 "of length n.  The domain is (t,x) in [0,T]x[a,b].  The initial condition is\n"
 "q(0,x) = f(x).  The flux may be of the form\n"
 "    F(t,x,q) = A(t,x,q) q\n"
-"but this is not required.  Uses finite volumes (grid values represent\n"
-"cell averages) and a case-specific Riemann solver\n"
+"but this is not required.  Flux boundary conditions are used:\n"
+"    F = bdryflux_a(t,qright)\n"
+"    F = bdryflux_b(t,qleft)\n"
+"Reflecting and outflow boundary conditions are among the implemented types.\n\n"
+"Uses finite volumes (grid values represent cell averages) and a case-specific\n"
+"Riemann solver\n"
 "    F = faceflux(t,x,qleft,qright)\n"
-"at cell faces.  Godunov's method is used: at each cell face use the\n"
-"Riemann solver to compute the value on the cell face going forward in time.\n"
-"Similarly, case-specific flux boundary conditions are used:\n"
-"    F = bdryflux_a(t,qright),\n"
-"    F = bdryflux_b(t,qleft),\n"
-"Reflecting and outflow boundary conditions are among the implemented types.\n"
+"at cell faces.  Implements the following slope-limiters:\n"
+"    -limiter none       Godunov's method, i.e. first-order upwinding\n"
+"    -limiter fromm      formula (6.14) in LeVeque 2002\n"
+"    -limiter mc         formula (6.29) in LeVeque 2002\n"
+"    -limiter minmod     formula (6.26) in LeVeque 2002\n"
+"(Note that in Godunov's method, at each cell face the Riemann solver computes\n"
+"the value of the solution on the cell face going forward in time.)\n\n"
 "Use option -problem to select the problem case:\n"
 "    -problem acoustic   wave equation in system form (n=2) [default]\n"
 "    -problem swater     shallow water equations (n=2)\n"
+"(Use -problem X -help |grep initial to see initial conditions for these\n"
+"problems.)\n\n"
 "These PETSc options, among others, give further information and control\n"
 "    -da_grid_x M                             [grid of M points]\n"
 "    -ts_monitor                              [shows time steps]\n"
@@ -24,7 +31,7 @@ static char help[] =
 "        -draw_pause 0.1 -draw_size 2000,200  [control the movie]\n"
 "    -ts_type                                 [default is rk]\n"
 "        -ts_rk_type X                        [default is 3bs]\n"
-"    -ts_dt 0.01 -ts_adapt_type none          [turn off adaptive]\n"
+"    -ts_dt 0.01 -ts_adapt_type none          [turn off adaptive]\n\n"
 "See the makefile for test examples, and do 'make test' to test.\n\n";
 
 
@@ -42,8 +49,8 @@ static PetscReal minmod(PetscReal a, PetscReal b) {
         return 0.0;
 }
 
-typedef enum {NONE,MINMOD,MC} LimiterType;
-static const char* LimiterTypes[] = {"none","minmod","mc",
+typedef enum {NONE,FROMM,MC,MINMOD} LimiterType;
+static const char* LimiterTypes[] = {"none","fromm","mc","minmod",
                                      "LimiterType", "", NULL};
 
 static LimiterType limiter = NONE;     // slope-limiter
@@ -85,8 +92,12 @@ int main(int argc,char **argv) {
 
     // create grid
     swidth = (limiter == NONE) ? 1 : 2;
-    ierr = DMDACreate1d(PETSC_COMM_WORLD,DM_BOUNDARY_NONE,4,
-                        user.n_dim,swidth,NULL,&da); CHKERRQ(ierr);
+    ierr = DMDACreate1d(PETSC_COMM_WORLD,
+                        DM_BOUNDARY_NONE,
+                        4,          // default resolution
+                        user.n_dim, // system dimension (d.o.f.)
+                        swidth,     // stencil (half) width
+                        NULL,&da); CHKERRQ(ierr);
     ierr = DMSetFromOptions(da); CHKERRQ(ierr);
     ierr = DMSetUp(da); CHKERRQ(ierr);
     ierr = DMSetApplicationContext(da,&user); CHKERRQ(ierr);
@@ -227,11 +238,11 @@ PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
                                 //     side of current face
                      *Fl, *Fr;  // face fluxes on either end of current cell
 
-    // for each owned cell get limited slope
+    // for each owned cell get slope using the slope-limiter
     ierr = DMCreateLocalVector(info->da,&sig); CHKERRQ(ierr);
     ierr = VecSet(sig,0.0); CHKERRQ(ierr);  // implements limiter == NONE
     ierr = DMDAVecGetArray(info->da,sig,&asig); CHKERRQ(ierr);
-    if (limiter != NONE) {
+    if (limiter != NONE) {  // following block assumes swidth >= 2
         for (j = info->xs-1; j < info->xs + info->xm+1; j++) {   // x_j is cell center
             for (k = 0; k < n; k++) {
                 if (j < 0 || j > info->mx-1)
@@ -241,12 +252,19 @@ PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
                 else if (j == info->mx-1)
                     asig[n*j+k] = (aq[n*j + k] - aq[n*(j-1) + k]) / hx;
                 else {
-                    sl = (aq[n*j + k] - aq[n*(j-1) + k]) / hx;
-                    sr = (aq[n*(j+1) + k] - aq[n*j + k]) / hx;
-                    if (limiter == MINMOD)
-                        asig[n*j+k] = minmod(sl,sr);
-                    else // limiter == MC
-                        asig[n*j+k] = minmod(0.5*(sl+sr),2.0*minmod(sl,sr));
+                    if (limiter == FROMM) {
+                        asig[n*j+k] = (aq[n*(j+1) + k] - aq[n*(j-1) + k]) / (2.0 * hx);
+                    } else {
+                        sr = (aq[n*(j+1) + k] - aq[n*j + k]) / hx;
+                        sl = (aq[n*j + k] - aq[n*(j-1) + k]) / hx;
+                        if (limiter == MINMOD)
+                            asig[n*j+k] = minmod(sl,sr);
+                        else if (limiter == MC)
+                            asig[n*j+k] = minmod(0.5*(sl+sr),2.0*minmod(sl,sr));
+                        else {
+                            SETERRQ(PETSC_COMM_SELF,1,"how did I get here?\n");
+                        }
+                    }
                 }
             }
         }

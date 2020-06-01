@@ -29,11 +29,14 @@ runriemann_6:
 runriemann_7:
 	-@../testit.sh riemann "-problem acoustic -limiter mc -initial stump -da_grid_x 10" 1 7
 
-test: runriemann_1 runriemann_2 runriemann_3 runriemann_4 runriemann_5 runriemann_6 runriemann_7
+runriemann_8:
+	-@../testit.sh riemann "-problem acoustic -limiter fromm -initial stump -da_grid_x 9" 1 8
+
+test: runriemann_1 runriemann_2 runriemann_3 runriemann_4 runriemann_5 runriemann_6 runriemann_7 runriemann_8
 
 # etc
 
-.PHONY: clean runriemann_1 runriemann_2 runriemann_3 runriemann_4 runriemann_5 runriemann_6 runriemann_7 test
+.PHONY: clean runriemann_1 runriemann_2 runriemann_3 runriemann_4 runriemann_5 runriemann_6 runriemann_7 runriemann_8 test
 
 clean::
 	@rm -f *~ riemann difftmp maketmp tmp
