@@ -34,17 +34,20 @@ typedef PetscErrorCode ProblemInitializer(ProblemCtx*);
 #include "acoustic.h"
 #include "advection.h"
 #include "swater.h"
-// FIXME add "burgers.h" scalar case
+#include "traffic.h"
 typedef enum {ACOUSTIC,
               ADVECTION,
-              SWATER} ProblemType;
+              SWATER,
+              TRAFFIC} ProblemType;
 static const char* ProblemTypes[] = {"acoustic",
                                      "advection",
                                      "swater",
+                                     "traffic",
                                      "ProblemType", "", NULL};
 static ProblemInitializer* InitializerPtrs[] = {&AcousticInitializer,
                                                 &AdvectionInitializer,
-                                                &SWaterInitializer};
+                                                &SWaterInitializer,
+                                                &TrafficInitializer};
 /* end BLOCK */
 
 #endif
