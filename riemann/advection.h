@@ -1,5 +1,22 @@
 /*
-FIXME document simple advection equation  u_t + a_0 u_x = 0
+This is the simple scalar, linear advection equation
+   u_t + a u_x = 0
+where a is constant (and of either sign).  The solution u(t,x), which may be
+interpreted as a passive tracer, is known to be
+   u(t,x) = f(x - a t)
+if u(0,x) = f(x) is the initial condition.  The boundary conditions are
+periodic.
+
+The local cell-face flux problem uses the Godunov method, which is to say
+simple first-order upwinding.  However, this is modified by slope-limiting
+in the riemann.c solver code.
+
+The initial condition is seen in Figures 6.1 and 6.2 of LeVeque [1].
+
+See cases.h and riemann.c for the full solver.
+
+[1] R. LeVeque, "Finite Volume Methods for Hyperbolic Problems", Cambridge
+    University Press, 2002.
 */
 
 // values from:
@@ -22,7 +39,8 @@ static PetscErrorCode advection_g(PetscReal t, PetscReal x, PetscReal *q, PetscR
     return 0;
 }
 
-// compute flux at internal faces from left and right values of q = [u]
+// compute flux at internal faces from left and right values of q = [u];
+// straightforward first-order upwinding
 static PetscErrorCode advection_faceflux(PetscReal t, PetscReal x,
        PetscReal *ql, PetscReal *qr, PetscReal *F) {
     F[0] = advection_a * ((advection_a >= 0.0) ? ql[0] : qr[0]);

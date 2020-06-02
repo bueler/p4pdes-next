@@ -38,7 +38,8 @@ static char help[] =
 "    -problem advection  scalar advection equation (n=1)\n"
 "    -problem swater     shallow water equations (n=2)\n"
 "    -problem traffic    scalar, nonlinear traffic equation (n=1)\n"
-"To see possible initial conditions for problem X do\n"
+"(See the corresponding .h file for details.)  To see possible initial\n"
+"conditions for problem X do\n"
 "    -problem X -help | grep \"initial condition\"\n"
 "and then use option\n"
 "    -initial Y\n\n"
@@ -47,8 +48,8 @@ static char help[] =
 
 #include <petsc.h>
 
-/* The struct "ProblemCtx" is defined in cases.h.  See comments in cases.h
-about how to add new problems. */
+/* The struct "ProblemCtx" is defined in cases.h.  The comments in cases.h
+show how to add new problems. */
 #include "cases.h"
 
 // minmod(a,b) as define on LeVeque page 111
