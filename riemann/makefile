@@ -35,11 +35,14 @@ riemann_8:
 riemann_9:
 	-@../testit.sh riemann "-problem traffic -initial greenlight -da_grid_x 5 -ts_monitor" 1 9
 
-test: riemann_1 riemann_2 riemann_3 riemann_4 riemann_5 riemann_6 riemann_7 riemann_8 riemann_9
+riemann_10:
+	-@../testit.sh riemann "-problem traffic -limiter mc -da_grid_x 20 -ts_max_time 5 -ts_dt 1 -ts_monitor" 1 10
+
+test: riemann_1 riemann_2 riemann_3 riemann_4 riemann_5 riemann_6 riemann_7 riemann_8 riemann_9 riemann_10
 
 # etc
 
-.PHONY: clean riemann_1 riemann_2 riemann_3 riemann_4 riemann_5 riemann_6 riemann_7 riemann_8 riemann_9 test
+.PHONY: clean riemann_1 riemann_2 riemann_3 riemann_4 riemann_5 riemann_6 riemann_7 riemann_8 riemann_9 riemann_10 test
 
 clean::
 	@rm -f *~ riemann difftmp maketmp tmp

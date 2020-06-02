@@ -1,11 +1,11 @@
 solving problem traffic, a system of 1 equations,
-  on 5-point grid with dx=12.000000 and initial dt=12.000000...
-0 TS dt 12. time 0.
-1 TS dt 2.71932 time 1.51507
-2 TS dt 3.19317 time 4.2344
-3 TS dt 3.82883 time 7.42757
-4 TS dt 3.3718 time 11.2564
-5 TS dt 3.3718 time 14.6282
-6 TS dt 6.10645 time 18.
+  on 5-point grid with dx=10.000000 and initial dt=10.000000...
+0 TS dt 10. time 0.
+1 TS dt 2.28763 time 1.31316
+2 TS dt 2.67586 time 3.60079
+3 TS dt 3.21601 time 6.27665
+4 TS dt 3.94277 time 9.49266
+5 TS dt 4.56457 time 13.4354
+6 TS dt 5.98824 time 18.
   ... completed 6 steps for 0.0000 <= t <= 18.0000
-  inf-norm of q  (traffic density) solution: 0.89945
+  inf-norm of q  (traffic density) solution: 0.94325

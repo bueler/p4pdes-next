@@ -1,5 +1,5 @@
 /*
-This problem is equation (2.50) in LeVeque [1]:
+This acoustic system is equation (2.50) in LeVeque [1]:
     p_t + K0 u_x = 0
     u_t + (1/rho0) p_x = 0
 where p(t,x) is pressure and u(t,x) is velocity.  The parameter and boundary
@@ -29,15 +29,16 @@ to give
 The boundary conditions need specific arguments for closed end and outflow
 cases.
 
+See cases.h and riemann.c for the full solver.
+
 [1] R. LeVeque, "Finite Volume Methods for Hyperbolic Problems", Cambridge
     University Press, 2002.
 */
 
-// prefix acoustic_ is essentially a namespace
-
+// values stated page 50 of LeVeque
 static const PetscReal acoustic_K0 = 0.25,
                        acoustic_rho0 = 1.0;
-static PetscReal       acoustic_Z0;   // see AcousticInitializer()
+static PetscReal       acoustic_Z0;
 
 static const char acoustic_pname[50] = "p (pressure)",
                   acoustic_uname[50] = "u (velocity)";
@@ -51,6 +52,7 @@ static PetscErrorCode acoustic_leveque(PetscReal t, PetscReal x, PetscReal *q) {
     return 0;
 }
 
+// this simple initial condition is not in LeVeque
 static PetscErrorCode acoustic_stump(PetscReal t, PetscReal x, PetscReal *q) {
     q[0] = (x > -0.3 && x < 0.3) ? 1.0 : 0.0;
     q[1] = 0.0;

@@ -1,0 +1,9 @@
+solving problem traffic, a system of 1 equations,
+  on 20-point grid with dx=3.000000 and initial dt=1.000000...
+0 TS dt 1. time 0.
+1 TS dt 2. time 1.
+2 TS dt 1.19927 time 2.60146
+3 TS dt 1.19927 time 3.80073
+4 TS dt 1.15848 time 5.
+  ... completed 4 steps for 0.0000 <= t <= 5.0000
+  inf-norm of q  (traffic density) solution: 0.91860
