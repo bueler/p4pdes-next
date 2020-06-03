@@ -6,6 +6,11 @@ riemann: riemann.o
 	-${CLINKER} -o riemann riemann.o  ${PETSC_LIB}
 	${RM} riemann.o
 
+# use this target to create symbolic links to PETSc binary files scripts
+petscPyScripts:
+	ln -sf ${PETSC_DIR}/lib/petsc/bin/PetscBinaryIO.py
+	ln -sf ${PETSC_DIR}/lib/petsc/bin/petsc_conf.py
+
 # testing
 
 riemann_1:
@@ -42,8 +47,9 @@ test: riemann_1 riemann_2 riemann_3 riemann_4 riemann_5 riemann_6 riemann_7 riem
 
 # etc
 
-.PHONY: clean riemann_1 riemann_2 riemann_3 riemann_4 riemann_5 riemann_6 riemann_7 riemann_8 riemann_9 riemann_10 test
+.PHONY: clean riemann_1 riemann_2 riemann_3 riemann_4 riemann_5 riemann_6 riemann_7 riemann_8 riemann_9 riemann_10 test petscPyScripts
 
 clean::
 	@rm -f *~ riemann difftmp maketmp tmp
+	@rm -rf __pycache__/
 
