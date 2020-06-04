@@ -8,6 +8,12 @@ options which generate a t-axis and a solution in binary format:
 Requires copies or sym-links to
    $PETSC_DIR/lib/petsc/bin/PetscBinaryIO.py
    $PETSC_DIR/lib/petsc/bin/petsc_conf.py
+For example:
+   $ ./riemann -da_grid_x 100 -ts_monitor binary:t.dat -ts_monitor_solution binary:q.dat
+   $ make petscPyScripts
+FIXME show more including writing files
+   $ ./plotTS.py -dof 2 -c 0 -mx 100 t.dat q.dat
+   $ ./plotTS.py -dof 2 -mx 100 t.dat q.dat
 '''
 
 import PetscBinaryIO
@@ -18,8 +24,6 @@ from argparse import ArgumentParser, RawTextHelpFormatter
 import numpy as np
 import matplotlib.pyplot as plt
 
-FIXME  modify to allow plotting frames when the spatial dimension is 1D
-
 parser = ArgumentParser(description=help,
                         formatter_class=RawTextHelpFormatter)
 parser.add_argument('tfile',metavar='TDATA',
@@ -27,65 +31,80 @@ parser.add_argument('tfile',metavar='TDATA',
 parser.add_argument('ufile',metavar='UDATA',
                     help='from -ts_monitor_solution binary:UDATA')
 parser.add_argument('-mx',metavar='MX', type=int, default=-1,
-                    help='spatial grid with MX points in x direction')
+                    help='spatial grid with MX points in x direction; required for 1D and 2D frames')
 parser.add_argument('-my',metavar='MY', type=int, default=-1,
-                    help='spatial grid with MY points in y direction; =MX by default')
+                    help='spatial grid with MY points in y direction; required for 2D frames')
 parser.add_argument('-dof',metavar='DOF', type=int, default=1,
-                    help='degrees of freedom of solution; =1 by default')
+                    help='degrees of freedom of solution')
 parser.add_argument('-c',metavar='C', type=int, default=0,
-                    help='component; =0,1,..,dof-1; ignored if dof=1)')
+                    help='component; =0,1,..,dof-1)')
 parser.add_argument('-o',metavar='FILE',dest='filename',
                     help='image file FILE (trajectory case)')
 parser.add_argument('-oroot',metavar='ROOT',dest='rootname',
                     help='frame files ROOT000.png,ROOT001.png,... (movie case)')
 args = parser.parse_args()
 
-if args.mx > 0 and args.my < 1:
-    args.my = args.mx
-frames = (args.mx > 0)
-
 io = PetscBinaryIO.PetscBinaryIO()
 t = np.array(io.readBinaryFile(args.tfile)).flatten()
 U = np.array(io.readBinaryFile(args.ufile)).transpose()
-dims = np.shape(U)
+Udims = np.shape(U)
 
-if len(t) != dims[1]:
+if len(t) != Udims[1]:
     print('time dimension mismatch: %d != %d' % (len(t),dims[1]))
     exit(1)
-if frames:
-    if args.dof == 1:
-        if dims[0] != args.mx * args.my:
-            print('spatial dimension mismatch: %d != %d * %d (and dof=1)' % \
-                  (dims[0],args.mx,args.my))
-            exit(2)
-        U = np.reshape(U,(args.my,args.mx,len(t)))
-        dims = np.shape(U)
-        print('solution U is shape=(%d,%d,%d)' % tuple(dims))
-    else:
-        if dims[0] != args.mx * args.my * args.dof:
-            print('spatial dimension mismatch: %d != %d * %d * %d' % \
-                  (dims[0],args.mx,args.my,args.dof))
-            exit(3)
-        U = np.reshape(U,(args.my,args.mx,args.dof,len(t)))
-        dims = np.shape(U)
-        print('solution U is shape=(%d,%d,%d,%d)' % tuple(dims))
-    print('time t has length=%d, with mx x my = %d x %d frames' % \
+
+spacedim = 0
+if args.mx > 0 and args.my < 0:
+    spacedim = 1
+elif args.mx > 0 and args.my > 0:
+    spacedim = 2
+
+print('solution U initially has shape = %s' % str(tuple(Udims)))
+if spacedim == 1:
+    print('1D frames case ...')
+    if Udims[0] != args.mx * args.dof:
+        print('spatial dimension mismatch: %d != %d * %d' % \
+              (Udims[0],args.mx,args.dof))
+        exit(2)
+    U = np.reshape(U,(args.mx,args.dof,len(t)))
+    dims = np.shape(U)
+    print('solution U now has shape=(%d,%d,%d)' % tuple(dims))
+    print('  [time t has length=%d, with dof = %d and mx = %d]' % \
           (dims[-1],dims[1],dims[0]))
+elif spacedim == 2:
+    print('2D frames case ...')
+    if Udims[0] != args.mx * args.my * args.dof:
+        print('spatial dimension mismatch: %d != %d * %d * %d' % \
+              (Udims[0],args.mx,args.my,args.dof))
+        exit(3)
+    U = np.reshape(U,(args.my,args.mx,args.dof,len(t)))
+    dims = np.shape(U)
+    print('solution U is now shape=(%d,%d,%d,%d)' % tuple(dims))
+    print('  [time t has length=%d, with dof = %d, mx = %d, and my = %d]' % \
+          (dims[-1],dims[2],dims[1],dims[0]))
 else:
-    print('time t has length=%d, solution Y is shape=(%d,%d)' % \
-          (len(t),dims[0],dims[1]))
+    print('trajectory case ...')
+    print('solution U has shape=(%d,%d)' % tuple(dims))
+    print('time t has length=%d, solution Y has length' % \
+          (dims[1],dims[0]))
 
-framescmap = 'jet'  # close to the PETSc X windows default
-#framescmap = 'inferno'
-#framescmap = 'gray'
+framescmap = 'jet'  # close to PETSc X windows default; compare inferno,gray
 
-if frames:
-    print('generating files %s000.png .. %s%03d.png:' % \
-          (args.rootname,args.rootname,len(t)-1))
-    if args.dof == 1:
-        plt.imshow(U[:,:,0],cmap=framescmap)
+if spacedim > 0:
+    if args.rootname:
+        print('generating %d files %s000.png .. %s%03d.png:' % \
+              (len(t),args.rootname,args.rootname,len(t)-1))
     else:
+        print('showing %d frames to screen ...' % len(t))
+    if spacedim == 1:
+        line, = plt.plot(U[:,args.c,0])
+        # FIXME decorate axes from options (ylabel, xticklabels)
+        # FIXME scale axes using global min and max of data
+    elif spacedim == 2:
         plt.imshow(U[:,:,args.c,0],cmap=framescmap)
+    else:
+        print('how did I get here?')
+        exit(4)
     plt.title('t = %g' % t[0])
     if args.rootname:
         plt.savefig(args.rootname + "%03d.png" % 0)
@@ -95,10 +114,13 @@ if frames:
     for k in range(len(t)-1):
         print('.', end =' ')
         stdout.flush()
-        if args.dof == 1:
-            plt.imshow(U[:,:,k+1],cmap=framescmap)
-        else:
+        if spacedim == 1:
+            line.set_ydata(U[:,args.c,k+1])
+        elif spacedim == 2:
             plt.imshow(U[:,:,args.c,k+1],cmap=framescmap)
+        else:
+            print('how did I get here?')
+            exit(5)
         plt.title('t = %g' % t[k+1])
         if args.rootname:
             plt.savefig(args.rootname + "%03d.png" % (k+1))
@@ -111,7 +133,7 @@ else:
     plt.xlabel('t')
     plt.legend()
     if args.filename:
-        print('writing file %s' % args.filename)
+        print('writing trajectory image file %s' % args.filename)
         plt.savefig(args.filename)
     else:
         plt.show()

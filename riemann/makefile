@@ -51,5 +51,6 @@ test: riemann_1 riemann_2 riemann_3 riemann_4 riemann_5 riemann_6 riemann_7 riem
 
 clean::
 	@rm -f *~ riemann difftmp maketmp tmp
+	@rm -f PetscBinaryIO.py petsc_conf.py *.png *.dat *.dat.info
 	@rm -rf __pycache__/
 
