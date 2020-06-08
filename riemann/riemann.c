@@ -43,7 +43,9 @@ static char help[] =
 "    -problem X -help | grep \"initial condition\"\n"
 "and then use option\n"
 "    -initial Y\n\n"
-"See the makefile for test examples, and do 'make test' to test.\n\n";
+"See the makefile for test examples, and do 'make test' to test.\n\n"
+"This program is documented by the slides in the fvolume/ directory at\n"
+"https://github.com/bueler/slide-teach\n\n";
 
 
 #include <petsc.h>
