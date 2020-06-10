@@ -15,6 +15,9 @@ shown in Figure 13.1 ("bulge"), Figure 13.2 ("redlight"), and Figure 13.3
 
 See cases.h and riemann.c for the full solver.
 
+This case is documented by the slides in the fvolume/ directory at
+    https://github.com/bueler/slide-teach
+
 [1] R. LeVeque, "Finite Volume Methods for Hyperbolic Problems", Cambridge
     University Press, 2002.
 */

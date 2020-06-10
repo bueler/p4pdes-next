@@ -1,16 +1,40 @@
-/* FIXME  document eigenvectors, Riemann invariants, local face flux computation from Riemann solver
+/*
+This one-dimensional shallow water system is equation (13.5) in LeVeque [1]:
+    h_t + (hu)_x = 0
+    (hu)_t + (hu^2 + (g/2) h^2)_x = 0
+where h(t,x) is water surface height and u(t,x) is vertically-averaged
+horizontal water velocity.  See pages 254--257 of [1] for a derivation.
 
-from LeVeque [1] pages 254--257; specific problem is for Figure 13.1
+Equivalently, if q1 = h and q2 = hu then the system is
+    q1_t + q2_x = 0
+    q2_t + (q2^2/q1 + (g/2) q1^2)_x = 0
+Thus the system is a conservation law  q_t + F(q)_x = 0  with flux
+    F(q) = [h;                = [q2;
+            hu^2 + (g/2) h^2]    q2^2/q1 + (g/2) q1^2]
+and so
+    F'(q) = A = [0,          1;   = [0,                 1;
+                 -u^2 + g h, 2 u]    -(q2/q1)^2 + g q1, 2 (q2/q1)]
 
-uses Roe solver designed for shallow water, section 15.3.3
+The specific problems implemented here are the "hump" problem of Figure 13.1
+and the "dam" problem in Figure 13.4 of [1].  Both problems have outflow
+boundary conditions on each end.
 
-for constants see setprob.data and qinit.f in download from
+FIXME document eigenvectors, Riemann invariants, local face flux computation from Riemann solver
+
+FIXME uses Roe solver designed for shallow water, section 15.3.3
+
+FIXME for constants see setprob.data and qinit.f in download from
 http://depts.washington.edu/clawpack/clawpack-4.3/book/chap13/swhump1/www/index.html
 thus:
 grav = 1.0
 beta = 5.0
 q0(x) = 1.0 + 0.4 exp(-beta x^2)
 q1(x) = 0.0
+
+See cases.h and riemann.c for the full solver.
+
+This case is documented by the slides in the fvolume/ directory at
+    https://github.com/bueler/slide-teach
 
 [1] R. LeVeque, "Finite Volume Methods for Hyperbolic Problems", Cambridge
   University Press, 2002.
@@ -44,7 +68,7 @@ static PetscErrorCode swater_g(PetscReal t, PetscReal x, PetscReal *q, PetscReal
 // evaluate F(q); for flux formula see page 255 of LeVeque
 static inline void swater_evalflux(PetscReal h, PetscReal hu, PetscReal *F) {
     F[0] = hu;
-    F[1] = (hu*hu / h) + 0.5 * swater_grav * h*h;
+    F[1] = (hu*hu / h) + (swater_grav / 2.0) * h*h;
 }
 
 // compute flux at internal faces from left and right values of q = [h, h u]
