@@ -19,7 +19,7 @@ of a dam break problem using SSP time-stepping:
 
 * E. Bueler, PETSc for Partial Differential Equations: Numerical solutions in C and Python, SIAM Press, 2020?
 
-* S. Gottlieb, C. W. Shu, & E. Tadmor, Strong stability-preserving high-order time discretization methods. SIAM Review, 43(1), 89-112, 2001
+* S. Gottlieb, D. I. Ketcheson, & C. W. Shu, High order strong stability preserving time discretizations. Journal of Scientific Computing, 38(3), 251-289, 2009
 
 * R. J. LeVeque, Finite Volume Methods for Hyperbolic Problems, Cambridge University Press, 2002
 
