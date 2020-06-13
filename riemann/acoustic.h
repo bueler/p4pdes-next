@@ -121,9 +121,9 @@ PetscErrorCode  AcousticInitializer(ProblemCtx *user) {
     }
 
     ierr = PetscOptionsBegin(PETSC_COMM_WORLD,"",
-               "options for acoustic solver (-problem acoustic)",""); CHKERRQ(ierr);
+               "options for acoustic solver (riemann -problem acoustic)",""); CHKERRQ(ierr);
     ierr = PetscOptionsEnum("-initial", "acoustic initial condition",
-               "riemann.c",AcousticInitialTypes,(PetscEnum)(initial),(PetscEnum*)&initial,
+               "acoustic.h",AcousticInitialTypes,(PetscEnum)(initial),(PetscEnum*)&initial,
                NULL); CHKERRQ(ierr);
     ierr = PetscOptionsEnd(); CHKERRQ(ierr);
 

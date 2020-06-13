@@ -180,9 +180,9 @@ PetscErrorCode  SWaterInitializer(ProblemCtx *user) {
     }
 
     ierr = PetscOptionsBegin(PETSC_COMM_WORLD,"",
-               "options for shallow water solver (-problem swater)",""); CHKERRQ(ierr);
+               "options for shallow water solver (riemann -problem swater)",""); CHKERRQ(ierr);
     ierr = PetscOptionsEnum("-initial", "shallow water initial condition",
-               "riemann.c",SWInitialTypes,(PetscEnum)(initial),(PetscEnum*)&initial,
+               "swater.h",SWInitialTypes,(PetscEnum)(initial),(PetscEnum*)&initial,
                NULL); CHKERRQ(ierr);
     ierr = PetscOptionsEnd(); CHKERRQ(ierr);
 

@@ -138,9 +138,9 @@ PetscErrorCode  TrafficInitializer(ProblemCtx *user) {
     }
 
     ierr = PetscOptionsBegin(PETSC_COMM_WORLD,"",
-               "options for traffic flow solver (-problem traffic)",""); CHKERRQ(ierr);
+               "options for traffic flow solver (riemann -problem traffic)",""); CHKERRQ(ierr);
     ierr = PetscOptionsEnum("-initial", "traffic flow initial condition",
-               "riemann.c",TRInitialTypes,(PetscEnum)(initial),(PetscEnum*)&initial,
+               "traffic.h",TRInitialTypes,(PetscEnum)(initial),(PetscEnum*)&initial,
                NULL); CHKERRQ(ierr);
     ierr = PetscOptionsEnd(); CHKERRQ(ierr);
 

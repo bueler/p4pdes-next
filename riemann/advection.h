@@ -62,9 +62,9 @@ PetscErrorCode  AdvectionInitializer(ProblemCtx *user) {
     }
 
     ierr = PetscOptionsBegin(PETSC_COMM_WORLD,"",
-               "options for advection solver (-problem advection)",""); CHKERRQ(ierr);
+               "options for advection solver (riemann -problem advection)",""); CHKERRQ(ierr);
     ierr = PetscOptionsReal("-a", "constant transport velocity",
-               "riemann.c",advection_a,&advection_a,NULL); CHKERRQ(ierr);
+               "advection.h",advection_a,&advection_a,NULL); CHKERRQ(ierr);
     ierr = PetscOptionsEnd(); CHKERRQ(ierr);
 
     user->n_dim = 1;
