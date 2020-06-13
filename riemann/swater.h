@@ -1,35 +1,42 @@
 /*
-This one-dimensional shallow water system is equation (13.5) in LeVeque [1]:
+The one-spatial-dimension shallow water model is equation (13.5) in LeVeque [1]:
     h_t + (hu)_x = 0
     (hu)_t + (hu^2 + (g/2) h^2)_x = 0
-where h(t,x) is water surface height and u(t,x) is vertically-averaged
-horizontal water velocity.  See pages 254--257 of [1] for a derivation.
+Here h(t,x) is water surface height (thickness) and u(t,x) is the
+vertically-averaged horizontal water velocity.  See pages 254--257 of [1] for a
+derivation of this system.
 
 Equivalently, if q1 = h and q2 = hu then the system is
     q1_t + q2_x = 0
     q2_t + (q2^2/q1 + (g/2) q1^2)_x = 0
 Thus the system is a conservation law  q_t + F(q)_x = 0  with flux
-    F(q) = [h;                = [q2;
-            hu^2 + (g/2) h^2]    q2^2/q1 + (g/2) q1^2]
+    F(q) = [h;                 =  [q2;
+            hu^2 + (g/2) h^2]      q2^2/q1 + (g/2) q1^2]
 and so
-    F'(q) = A = [0,          1;   = [0,                 1;
-                 -u^2 + g h, 2 u]    -(q2/q1)^2 + g q1, 2 (q2/q1)]
+    F'(q) = [0,          1;    =  [0,                 1;
+             -u^2 + g h, 2 u]      -(q2/q1)^2 + g q1, 2 (q2/q1)]
 
 The specific problems implemented here are the "hump" problem of Figure 13.1
-and the "dam" problem in Figure 13.4 of [1].  Both problems have outflow
-boundary conditions on each end.
-
-FIXME document eigenvectors, Riemann invariants, local face flux computation from Riemann solver
-
-FIXME uses Roe solver designed for shallow water, section 15.3.3
-
-FIXME for constants see setprob.data and qinit.f in download from
+and the "dam" problem in Figure 13.4 of [1].  Both problems have nonreflecting
+boundary conditions on each end.  The constants used here are from setprob.data
+and qinit.f in the download from
 http://depts.washington.edu/clawpack/clawpack-4.3/book/chap13/swhump1/www/index.html
-thus:
-grav = 1.0
-beta = 5.0
-q0(x) = 1.0 + 0.4 exp(-beta x^2)
-q1(x) = 0.0
+Specifically, g = 1.0 and, for the "hump" initial condition, beta = 5.0
+and q0(x) = 1.0 + 0.4 exp(-beta x^2).
+
+The Riemann solver is *not* exact.  That is, unlike in the other models solved
+by riemann.c (see acoustic.h, advection.h, and traffic.h), the flux on a face
+is not computed from the solution (on the face) of the problem with two levels
+Q_L, Q_R in the neighboring cells.  Instead the method is the "linearized
+Riemann solver" described in section 15.3.1 of LeVeque [1].  That is, we first
+evaluate the 2x2 matrix
+    A = F'(qhat)
+where qhat is an "average" of the values Q_L, Q_R.  Then we compute the
+solution of the Riemann problem for the linear problem (see acoustic.h) using
+this matrix A.
+
+But qhat is not a simple average.  Instead it is the Roe average (section 15.3.3
+of LeVeque [1]).  See the source code of swater_faceflux() below.
 
 See cases.h and riemann.c for the full solver.
 
@@ -85,37 +92,43 @@ static PetscErrorCode swater_faceflux(PetscReal t, PetscReal x,
                  "h = qr[0] = %g is nonpositive at (t,x) = (%g,%g)\n",
                  qr[0],t,x);
     }
-    // compute hbar and uhat from Roe averages, section 15.3.3 of LeVeque
+    // compute hbar and uhat from Roe averages, formulas (15.32) and (15.35)
+    // in LeVeque
     const PetscReal hbar = 0.5 * (ql[0] + qr[0]),
                     rhl  = PetscSqrtReal(ql[0]),
                     rhr  = PetscSqrtReal(qr[0]),
-                    ul   = ql[1] / ql[0],
-                    ur   = qr[1] / qr[0],
-                    uhat = (rhl * ul + rhr * ur) / (rhl + rhr),
+                    uhat = (rhl*ql[1]/ql[0] + rhr*qr[1]/qr[0]) / (rhl + rhr),
                     delta = PetscSqrtReal(swater_grav * hbar),
                     lam0 = uhat - delta,   // note lam0 < lam1 always
                     lam1 = uhat + delta;
     // Riemann solver using lam0, lam1 speeds
     PetscReal hface, huface;
-    if (lam1 < 0.0) {          // both speeds negative
+    if (lam1 <= 0.0) {          // both speeds nonpositive
         hface = qr[0];
         huface = qr[1];
-    } else if (lam0 >= 0.0) {  // both speeds nonnegative
+    } else if (lam0 >= 0.0) {   // both speeds nonnegative
         hface = ql[0];
         huface = ql[1];
-    } else {
-        const PetscReal beta0 = - uhat - delta,
-                        beta1 = - uhat + delta,
-                        v0r   = beta0 * qr[0] + qr[1],
-                        v1l   = beta1 * ql[0] + ql[1];
-        hface = (v1l - v0r) / (beta1 - beta0);
-        huface = (beta1 * v0r - beta0 * v1l) / (beta1 - beta0);
+    } else {                    // lam0 < 0 < lam1
+        // solve the Riemann problem with one invariant (v0) travelling left
+        // and one (v1) traveling right
+        const PetscReal v0r   = -lam1 * qr[0] + qr[1],
+                        v1l   = -lam0 * ql[0] + ql[1];
+        hface = (v1l - v0r) / (lam1 - lam0);
+        huface = (lam1 * v1l - lam0 * v0r) / (lam1 - lam0);
     }
     swater_evalflux(hface,huface,F);
     return 0;
 }
 
-// FIXME want outflow boundary condition at x=a
+// Nonreflecting boundary condition at x=a: compute the boundary flux from
+// zeroth-order extrapolation of Q.  This is discussed in section 7.3.1 of
+// LeVeque [1] in the case of linear systems.  Note in particular:
+//     Note that by setting [Q_{-1}=Q_0] we insure that the Riemann problem
+//     at the interface [x_{-1/2}] consists of no waves, ... So in particular
+//     there are no waves generated at the boundary regardless of what is
+//     happening in the interior, as desired for nonreflecting boundary
+//     conditions.
 static PetscErrorCode swater_bdryflux_a(PetscReal t, PetscReal *qr, PetscReal *F) {
     PetscErrorCode ierr;
     if (qr[0] <= 0.0) {
@@ -127,7 +140,7 @@ static PetscErrorCode swater_bdryflux_a(PetscReal t, PetscReal *qr, PetscReal *F
     return 0;
 }
 
-// FIXME want outflow boundary condition at x=b
+// Nonreflecting boundary condition at x=b.
 static PetscErrorCode swater_bdryflux_b(PetscReal t, PetscReal *ql, PetscReal *F) {
     PetscErrorCode ierr;
     if (ql[0] <= 0.0) {
