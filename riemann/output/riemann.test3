@@ -8,5 +8,5 @@ solving problem swater, a system of 2 equations,
 5 TS dt 0.548657 time 2.45134
 6 TS dt 0.943839 time 3.
   ... completed 6 steps for 0.0000 <= t <= 3.0000
-  inf-norm of h (surface height) solution: 1.02528
-  inf-norm of h u (height * velocity) solution: 0.02587
+  inf-norm of h (water depth) solution: 1.02528
+  inf-norm of h u (depth * velocity) solution: 0.02587

@@ -3,11 +3,14 @@ The one-spatial-dimension shallow water model is equation (3.1) of LeVeque,
 George, Berger [2]:
     h_t + (hu)_x = 0
     (hu)_t + (hu^2 + (g/2) h^2)_x = -g h B_x
-Here h(t,x) is water surface height (thickness) and u(t,x) is the
-vertically-averaged horizontal water velocity.  The level bathymetry case
-(B_x=0) is equation (13.5) in LeVeque [1]; see pages 254--257 of [1] for a
-derivation of this system.  Otherwise B(x) gives the bathymetry; note that
-the value of B(x) is never used, only its derivative B'(x).
+Here h(t,x) is water depth (thickness), u(t,x) is the vertically-averaged
+horizontal water velocity, and B(x) is the elevation of the bathymetry.  Thus
+    eta(t,x) = B(x) + h(t,x)
+is the elevation of the water surface.
+
+The constant bathymetry case (B_x = 0) is equation (13.5) in LeVeque [1]; see
+pages 254--257 of [1] for a derivation of this system.  Note that the *value*
+of B(x) is not used after initialization, only its derivative B_x(x).
 
 Equivalently, if q1 = h and q2 = hu then the system is
     q1_t + q2_x = 0
@@ -22,19 +25,28 @@ Thus the characteristic speeds come from the matrix
     F'(q) = [0,          1;    =  [0,                 1;
              -u^2 + g h, 2 u]      -(q2/q1)^2 + g q1, 2 (q2/q1)]
 
-The specific initial states implemented here using -initial X:
+The domain is  -5 < x < 5.  All problems have nonreflecting boundary conditions
+on each end.
+
+The bathymetry is always a straight line:
+    B(x) = b0 + bx x
+(The default for the slope is bx = 0.)
+
+The initial states (-initial X) and set the initial depth  h(0,x):
+  X = flat:  h is set by the requirement eta(0,x) = 0
   X = hump:  problem of Figure 13.1 of [1]
   X = dam:   problem in Figure 13.4 of [1]
-All problems have nonreflecting boundary conditions on each end.
-
-The bathymetry has constant slope given by -bx; the default is +0.0.
-
-FIXME: result of following suggests that the flat state is not preserved; product hu grows steadily
-./riemann -problem swater -limiter minmod -initial flat -da_grid_x 4000 -draw_size 1000,200 -ts_type rk -ts_rk_type 2a -ts_monitor_solution draw -bx 1 -ts_adapt_type none
+In each case the initial velocity is zero:  u(0,x) = 0.
 
 
-The constants used here are from setprob.data
-and qinit.f in the download from
+FIXME: result of following suggests that the flat state is not preserved:
+    ./riemann -da_grid_x 4000 -problem swater -initial hump -b0 -1.0 -bx 0.1 -ts_monitor_solution draw -draw_size 1000,200 -draw_pause 0.01
+* also try -initial flat
+* note that with  -b0 -1.0 and -bx 0.1  we have initial flat thickness
+(-initial flat) varying from h(-5) = 1.5 to h(5) = 0.5
+
+
+The constants used here are from setprob.data and qinit.f in the download from
 http://depts.washington.edu/clawpack/clawpack-4.3/book/chap13/swhump1/www/index.html
 Specifically, g = 1.0 and, for the "hump" initial condition, beta = 5.0
 and q0(x) = 1.0 + 0.4 exp(-beta x^2).
@@ -67,28 +79,36 @@ This case is documented by the slides in the fvolume/ directory at
     http://faculty.washington.edu/rjl/pubs/AN2011/LeVequeGeorgeBerger-an11.pdf
 */
 
-static const PetscReal swater_grav = 1.0;
-static PetscReal swater_bx = 0.0;
+static PetscReal swater_grav = 1.0,
+                 swater_b0 = -1.0,
+                 swater_bx = 0.0;
 
-static const char swater_hname[50] = "h (surface height)",
-                  swater_huname[50] = "h u (height * velocity)";
+static const char swater_hname[50] = "h (water depth)",
+                  swater_huname[50] = "h u (depth * velocity)";
 
+static PetscReal swater_B(PetscReal x) {
+    return swater_b0 + swater_bx * x;
+}
+
+// the surface elevation is
+//   eta(t,x) = B(x) + h(t,x)
+// so initially flat (eta(0,x) = 0) means  h(0,x) = - B(x)
 static PetscErrorCode swater_flat(PetscReal t, PetscReal x, PetscReal *q) {
-    q[0] = 1.0;
+    q[0] = - swater_B(x);
     q[1] = 0.0;
     return 0;
 }
 
 // see LeVeque Figure 13.1
 static PetscErrorCode swater_hump(PetscReal t, PetscReal x, PetscReal *q) {
-    q[0] = 1.0 + 0.4 * PetscExpReal(- 5.0 * x*x);
+    q[0] = - swater_B(x) + 0.4 * PetscExpReal(- 5.0 * x*x);
     q[1] = 0.0;
     return 0;
 }
 
 // see LeVeque Figure 13.4
 static PetscErrorCode swater_dam(PetscReal t, PetscReal x, PetscReal *q) {
-    q[0] = (x < 0) ? 3.0 : 1.0;
+    q[0] = - swater_B(x) + ((x < 0) ? 2.0 : 0.0);
     q[1] = 0.0;
     return 0;
 }
@@ -211,7 +231,9 @@ PetscErrorCode  SWaterInitializer(ProblemCtx *user) {
     ierr = PetscOptionsEnum("-initial", "shallow water initial condition",
                "swater.h",SWInitialTypes,(PetscEnum)(initial),(PetscEnum*)&initial,
                NULL); CHKERRQ(ierr);
-    ierr = PetscOptionsReal("-bx", "constant bathymetry slope",
+    ierr = PetscOptionsReal("-b0", "bathymetry elevation at x=0",
+               "swater.h",swater_b0,&swater_b0,NULL); CHKERRQ(ierr);
+    ierr = PetscOptionsReal("-bx", "bathymetry slope",
                "swater.h",swater_bx,&swater_bx,NULL); CHKERRQ(ierr);
     ierr = PetscOptionsEnd(); CHKERRQ(ierr);
 
