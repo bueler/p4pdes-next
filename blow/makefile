@@ -1,7 +1,7 @@
 # testing
 
 runminimal_1:
-	-@../testit.sh minimal.py "FIXME" 1 1
+	-@../testit.sh minimal.py "-refine 2 -s_snes_converged_reason -s_ksp_converged_reason -s_pc_type mg" 1 1
 
 test_minimal: runminimal_1
 

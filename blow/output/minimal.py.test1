@@ -1,0 +1,8 @@
+  Linear s_ solve converged due to CONVERGED_RTOL iterations 5
+  Linear s_ solve converged due to CONVERGED_RTOL iterations 4
+  Linear s_ solve converged due to CONVERGED_RTOL iterations 4
+  Linear s_ solve converged due to CONVERGED_RTOL iterations 4
+  Linear s_ solve converged due to CONVERGED_RTOL iterations 3
+  Linear s_ solve converged due to CONVERGED_RTOL iterations 4
+Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 6
+done on 9 x 9 grid of Q_1:  error |u-uexact|_inf = 2.966e-04
