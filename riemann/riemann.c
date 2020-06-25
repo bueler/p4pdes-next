@@ -82,7 +82,7 @@ int main(int argc,char **argv) {
     ProblemCtx       user;               // problem-specific information
     PetscInt         swidth, k, steps;
     PetscBool        flg;
-    PetscReal        hx, qnorm, t0, tf, dt, c;
+    PetscReal        hx, qmin, qmax, t0, tf, dt, c;
 
     PetscInitialize(&argc,&argv,(char*)0,help);
 
@@ -170,10 +170,11 @@ int main(int argc,char **argv) {
                "  ... completed %d steps for %.4f <= t <= %.4f\n",
                steps,t0,tf); CHKERRQ(ierr);
     for (k = 0; k < info.dof; k++) {
-        ierr = VecStrideNorm(q,k,NORM_INFINITY,&qnorm); CHKERRQ(ierr);
+        ierr = VecStrideMin(q,k,NULL,&qmin); CHKERRQ(ierr);
+        ierr = VecStrideMax(q,k,NULL,&qmax); CHKERRQ(ierr);
         ierr = PetscPrintf(PETSC_COMM_WORLD,
-               "  inf-norm of %s solution: %.5f\n",
-               (user.field_names)[k],qnorm); CHKERRQ(ierr);
+               "  range of %d component: %8.5f <= %s <= %8.5f\n",
+               k,qmin,(user.field_names)[k],qmax); CHKERRQ(ierr);
     }
 
     // free memory
@@ -287,7 +288,7 @@ PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
     if (info->xs == 0 && user->periodic_bcs == PETSC_FALSE) {
         // use right slope
         slopemodify(n,-hx/2.0,&asig[0],&aq[0],Qr);
-        ierr = user->bdryflux_a(t,Qr,Fl); CHKERRQ(ierr);
+        ierr = user->bdryflux_a(t,hx,Qr,Fl); CHKERRQ(ierr);
     } else {
         // use left and right (limited) slope [left is owned by other process]
         x = user->a_left + (info->xs+0.5) * hx;
@@ -305,7 +306,7 @@ PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
         if (j == info->mx-1 && user->periodic_bcs == PETSC_FALSE) {
             // user left slope
             slopemodify(n,hx/2.0,&asig[n*j],&aq[n*j],Ql);
-            ierr = user->bdryflux_b(t,Ql,Fr); CHKERRQ(ierr);
+            ierr = user->bdryflux_b(t,hx,Ql,Fr); CHKERRQ(ierr);
         } else {
             // use left and right (limited) slope; see formulas LeVeque page 193
             slopemodify(n,hx/2.0,&asig[n*j],&aq[n*j],Ql);

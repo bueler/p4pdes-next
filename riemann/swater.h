@@ -38,14 +38,6 @@ The initial states (-initial X) and set the initial depth  h(0,x):
   X = dam:   problem in Figure 13.4 of [1]
 In each case the initial velocity is zero:  u(0,x) = 0.
 
-
-FIXME: result of following suggests that the flat state is not preserved:
-    ./riemann -da_grid_x 4000 -problem swater -initial hump -b0 -1.0 -bx 0.1 -ts_monitor_solution draw -draw_size 1000,200 -draw_pause 0.01
-* also try -initial flat
-* note that with  -b0 -1.0 and -bx 0.1  we have initial flat thickness
-(-initial flat) varying from h(-5) = 1.5 to h(5) = 0.5
-
-
 The constants used here are from setprob.data and qinit.f in the download from
 http://depts.washington.edu/clawpack/clawpack-4.3/book/chap13/swhump1/www/index.html
 Specifically, g = 1.0 and, for the "hump" initial condition, beta = 5.0
@@ -170,32 +162,49 @@ static PetscErrorCode swater_faceflux(PetscReal t, PetscReal x,
 
 // Nonreflecting boundary condition at x=a: compute the boundary flux from
 // zeroth-order extrapolation of Q.  This is discussed in section 7.3.1 of
-// LeVeque [1] in the case of linear systems.  Note in particular:
+// LeVeque [1] in the case of linear systems.  In particular:
 //     Note that by setting [Q_{-1}=Q_0] we insure that the Riemann problem
 //     at the interface [x_{-1/2}] consists of no waves, ... So in particular
 //     there are no waves generated at the boundary regardless of what is
 //     happening in the interior, as desired for nonreflecting boundary
 //     conditions.
-static PetscErrorCode swater_bdryflux_a(PetscReal t, PetscReal *qr, PetscReal *F) {
+// With bathymetry we modify the ghost [Q_{-1}] value by the bathymetry.
+static PetscErrorCode swater_bdryflux_a(PetscReal t, PetscReal hx, PetscReal *qr, PetscReal *F) {
     PetscErrorCode ierr;
+    PetscReal      QL[2];
     if (qr[0] <= 0.0) {
         SETERRQ2(PETSC_COMM_SELF,1,
                  "h = qr[0] = %g is nonpositive at (t=%g,a)\n",
                  qr[0],t);
     }
-    ierr = swater_faceflux(t,-5.0,qr,qr,F); CHKERRQ(ierr);
+    QL[0] = qr[0] + swater_bx * hx;
+    if (QL[0] <= 0.0) {
+        SETERRQ2(PETSC_COMM_SELF,2,
+                 "ghost value h = q[-1] = %g is nonpositive at (t=%g,a)\n",
+                 QL[0],t);
+    }
+    QL[1] = qr[1];
+    ierr = swater_faceflux(t,-5.0,QL,qr,F); CHKERRQ(ierr);
     return 0;
 }
 
-// Nonreflecting boundary condition at x=b.
-static PetscErrorCode swater_bdryflux_b(PetscReal t, PetscReal *ql, PetscReal *F) {
+// Nonreflecting boundary condition at x=b.  See comment for previous.
+static PetscErrorCode swater_bdryflux_b(PetscReal t, PetscReal hx, PetscReal *ql, PetscReal *F) {
     PetscErrorCode ierr;
+    PetscReal      QR[2];
     if (ql[0] <= 0.0) {
         SETERRQ2(PETSC_COMM_SELF,1,
                  "h = qr[0] = %g is nonpositive at (t=%g,b)\n",
                  ql[0],t);
     }
-    ierr = swater_faceflux(t,5.0,ql,ql,F); CHKERRQ(ierr);
+    QR[0] = ql[0] - swater_bx * hx;
+    if (QR[0] <= 0.0) {
+        SETERRQ2(PETSC_COMM_SELF,2,
+                 "ghost value h = q[mx] = %g is nonpositive at (t=%g,b)\n",
+                 QR[0],t);
+    }
+    QR[1] = ql[1];
+    ierr = swater_faceflux(t,5.0,ql,QR,F); CHKERRQ(ierr);
     return 0;
 }
 

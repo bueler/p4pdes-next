@@ -17,9 +17,9 @@ typedef struct {
                                  PetscReal *q);
     PetscErrorCode  (*g_source)(PetscReal t, PetscReal x, PetscReal *q,
                                 PetscReal *g);
-    PetscErrorCode  (*bdryflux_a)(PetscReal t, PetscReal *qr,
+    PetscErrorCode  (*bdryflux_a)(PetscReal t, PetscReal hx, PetscReal *qr,
                                   PetscReal *F);
-    PetscErrorCode  (*bdryflux_b)(PetscReal t, PetscReal *ql,
+    PetscErrorCode  (*bdryflux_b)(PetscReal t, PetscReal hx, PetscReal *ql,
                                   PetscReal *F);
     PetscErrorCode  (*faceflux)(PetscReal t, PetscReal x, PetscReal *ql, PetscReal *qr,
                                 PetscReal *F);

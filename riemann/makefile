@@ -43,11 +43,14 @@ riemann_9:
 riemann_10:
 	-@../testit.sh riemann "-problem traffic -limiter mc -da_grid_x 20 -ts_max_time 5 -ts_dt 1 -ts_monitor" 1 10
 
-test: riemann_1 riemann_2 riemann_3 riemann_4 riemann_5 riemann_6 riemann_7 riemann_8 riemann_9 riemann_10
+riemann_11:
+	-@../testit.sh riemann "-problem swater -b0 -1 -bx -0.1 -initial hump -limiter none -ts_type ssp -da_grid_x 20" 1 11
+
+test: riemann_1 riemann_2 riemann_3 riemann_4 riemann_5 riemann_6 riemann_7 riemann_8 riemann_9 riemann_10 riemann_11
 
 # etc
 
-.PHONY: clean riemann_1 riemann_2 riemann_3 riemann_4 riemann_5 riemann_6 riemann_7 riemann_8 riemann_9 riemann_10 test petscPyScripts
+.PHONY: clean riemann_1 riemann_2 riemann_3 riemann_4 riemann_5 riemann_6 riemann_7 riemann_8 riemann_9 riemann_10 riemann_11 test petscPyScripts
 
 clean::
 	@rm -f *~ riemann difftmp maketmp tmp

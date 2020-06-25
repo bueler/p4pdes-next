@@ -1,4 +1,4 @@
 solving problem advection, a system of 1 equations,
   on 9-point grid with dx=0.111111 and initial dt=0.111111...
   ... completed 36 steps for 0.0000 <= t <= 1.0000
-  inf-norm of u solution: 0.59193
+  range of 0 component:  0.11438 <= u <=  0.59193

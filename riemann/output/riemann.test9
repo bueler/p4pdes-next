@@ -8,4 +8,4 @@ solving problem traffic, a system of 1 equations,
 5 TS dt 4.56457 time 13.4354
 6 TS dt 5.98824 time 18.
   ... completed 6 steps for 0.0000 <= t <= 18.0000
-  inf-norm of q  (traffic density) solution: 0.94325
+  range of 0 component:  0.12311 <= q  (traffic density) <=  0.94325

@@ -4,5 +4,5 @@ solving problem swater, a system of 2 equations,
 1 TS dt 0.1 time 0.1
 2 TS dt 0.289348 time 0.2
   ... completed 2 steps for 0.0000 <= t <= 0.2000
-  inf-norm of h (water depth) solution: 1.34316
-  inf-norm of h u (depth * velocity) solution: 0.03081
+  range of 0 component:  1.00010 <= h (water depth) <=  1.34316
+  range of 1 component: -0.03081 <= h u (depth * velocity) <=  0.03081

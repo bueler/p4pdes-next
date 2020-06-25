@@ -85,7 +85,7 @@ static PetscErrorCode traffic_faceflux(PetscReal t, PetscReal x,
     return 0;
 }
 
-static PetscErrorCode traffic_bdryflux_a_outflow(PetscReal t, PetscReal *qr, PetscReal *F) {
+static PetscErrorCode traffic_bdryflux_a_outflow(PetscReal t, PetscReal hx, PetscReal *qr, PetscReal *F) {
     const PetscReal  s = traffic_umax * (1.0 - 2.0 * qr[0]);
     if (s <= 0.0)
         F[0] = traffic_umax * qr[0] * (1.0 - qr[0]);
@@ -96,12 +96,12 @@ static PetscErrorCode traffic_bdryflux_a_outflow(PetscReal t, PetscReal *qr, Pet
     return 0;
 }
 
-static PetscErrorCode traffic_bdryflux_a_dirichlet(PetscReal t, PetscReal *qr, PetscReal *F) {
+static PetscErrorCode traffic_bdryflux_a_dirichlet(PetscReal t, PetscReal hx, PetscReal *qr, PetscReal *F) {
     F[0] = traffic_umax * traffic_qleft * (1.0 - traffic_qleft);
     return 0;
 }
 
-static PetscErrorCode traffic_bdryflux_b_outflow(PetscReal t, PetscReal *ql, PetscReal *F) {
+static PetscErrorCode traffic_bdryflux_b_outflow(PetscReal t, PetscReal hx, PetscReal *ql, PetscReal *F) {
     const PetscReal  s = traffic_umax * (1.0 - 2.0 * ql[0]);
     if (s >= 0.0)
         F[0] = traffic_umax * ql[0] * (1.0 - ql[0]);
@@ -112,7 +112,7 @@ static PetscErrorCode traffic_bdryflux_b_outflow(PetscReal t, PetscReal *ql, Pet
     return 0;
 }
 
-static PetscErrorCode traffic_bdryflux_b_dirichlet(PetscReal t, PetscReal *qr, PetscReal *F) {
+static PetscErrorCode traffic_bdryflux_b_dirichlet(PetscReal t, PetscReal hx, PetscReal *qr, PetscReal *F) {
     F[0] = traffic_umax * traffic_qright * (1.0 - traffic_qright);
     return 0;
 }

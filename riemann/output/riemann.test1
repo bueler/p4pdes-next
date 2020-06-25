@@ -9,5 +9,5 @@ solving problem acoustic, a system of 2 equations,
 6 TS dt 0.12245 time 0.87755
 7 TS dt 0.243358 time 1.
   ... completed 7 steps for 0.0000 <= t <= 1.0000
-  inf-norm of p (pressure) solution: 0.14502
-  inf-norm of u (velocity) solution: 0.18000
+  range of 0 component:  0.05596 <= p (pressure) <=  0.14502
+  range of 1 component: -0.16463 <= u (velocity) <=  0.18000

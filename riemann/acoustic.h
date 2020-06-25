@@ -76,7 +76,7 @@ static inline void acoustic_evalflux(PetscReal p, PetscReal u, PetscReal *F) {
 }
 
 // closed end boundary condition:  u(t,a) = 0
-static PetscErrorCode acoustic_bdryflux_a(PetscReal t, PetscReal *qr, PetscReal *F) {
+static PetscErrorCode acoustic_bdryflux_a(PetscReal t, PetscReal hx, PetscReal *qr, PetscReal *F) {
     const PetscReal  pa = qr[0] - acoustic_Z0 * qr[1], // p(t,a) = p(t_n,x_0) - Z0 u(t_n,x_0)
                      ua = 0.0;                         // u(t,a) = 0
     acoustic_evalflux(pa,ua,F);
@@ -84,7 +84,7 @@ static PetscErrorCode acoustic_bdryflux_a(PetscReal t, PetscReal *qr, PetscReal 
 }
 
 // outflow boundary condition:  p(t,b) - Z0 u(t,b) = 0  (zero the incoming Riemann invariant)
-static PetscErrorCode acoustic_bdryflux_b(PetscReal t, PetscReal *ql, PetscReal *F) {
+static PetscErrorCode acoustic_bdryflux_b(PetscReal t, PetscReal hx, PetscReal *ql, PetscReal *F) {
     const PetscReal  tmp = ql[0] + acoustic_Z0 * ql[1],
                      pb = 0.5 * tmp,
                      ub = 0.5 * tmp / acoustic_Z0;
