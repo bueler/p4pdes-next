@@ -1,24 +1,39 @@
 /*
-The one-spatial-dimension shallow water model is equation (13.5) in LeVeque [1]:
+The one-spatial-dimension shallow water model is equation (3.1) of LeVeque,
+George, Berger [2]:
     h_t + (hu)_x = 0
-    (hu)_t + (hu^2 + (g/2) h^2)_x = 0
+    (hu)_t + (hu^2 + (g/2) h^2)_x = -g h B_x
 Here h(t,x) is water surface height (thickness) and u(t,x) is the
-vertically-averaged horizontal water velocity.  See pages 254--257 of [1] for a
-derivation of this system.
+vertically-averaged horizontal water velocity.  The level bathymetry case
+(B_x=0) is equation (13.5) in LeVeque [1]; see pages 254--257 of [1] for a
+derivation of this system.  Otherwise B(x) gives the bathymetry; note that
+the value of B(x) is never used, only its derivative B'(x).
 
 Equivalently, if q1 = h and q2 = hu then the system is
     q1_t + q2_x = 0
-    q2_t + (q2^2/q1 + (g/2) q1^2)_x = 0
-Thus the system is a conservation law  q_t + F(q)_x = 0  with flux
+    q2_t + (q2^2/q1 + (g/2) q1^2)_x = -g q1 B_x
+If B_x = 0 then the system is a conservation law
+    q_t + F(q)_x = 0
+with flux function
     F(q) = [h;                 =  [q2;
             hu^2 + (g/2) h^2]      q2^2/q1 + (g/2) q1^2]
-and so
+
+Thus the characteristic speeds come from the matrix
     F'(q) = [0,          1;    =  [0,                 1;
              -u^2 + g h, 2 u]      -(q2/q1)^2 + g q1, 2 (q2/q1)]
 
-The specific problems implemented here are the "hump" problem of Figure 13.1
-and the "dam" problem in Figure 13.4 of [1].  Both problems have nonreflecting
-boundary conditions on each end.  The constants used here are from setprob.data
+The specific initial states implemented here using -initial X:
+  X = hump:  problem of Figure 13.1 of [1]
+  X = dam:   problem in Figure 13.4 of [1]
+All problems have nonreflecting boundary conditions on each end.
+
+The bathymetry has constant slope given by -bx; the default is +0.0.
+
+FIXME: result of following suggests that the flat state is not preserved; product hu grows steadily
+./riemann -problem swater -limiter minmod -initial flat -da_grid_x 4000 -draw_size 1000,200 -ts_type rk -ts_rk_type 2a -ts_monitor_solution draw -bx 1 -ts_adapt_type none
+
+
+The constants used here are from setprob.data
 and qinit.f in the download from
 http://depts.washington.edu/clawpack/clawpack-4.3/book/chap13/swhump1/www/index.html
 Specifically, g = 1.0 and, for the "hump" initial condition, beta = 5.0
@@ -44,13 +59,25 @@ This case is documented by the slides in the fvolume/ directory at
     https://github.com/bueler/slide-teach
 
 [1] R. LeVeque, "Finite Volume Methods for Hyperbolic Problems", Cambridge
-  University Press, 2002.
+    University Press, 2002.
+
+[2] R. LeVeque, D. George, M. Berger, "Tsunami modelling with adaptively-
+    refined finite volume methods", Acta Numerica 211-289, 2011
+    https://doi.org/10.1017/S0962492911000043
+    http://faculty.washington.edu/rjl/pubs/AN2011/LeVequeGeorgeBerger-an11.pdf
 */
 
 static const PetscReal swater_grav = 1.0;
+static PetscReal swater_bx = 0.0;
 
 static const char swater_hname[50] = "h (surface height)",
                   swater_huname[50] = "h u (height * velocity)";
+
+static PetscErrorCode swater_flat(PetscReal t, PetscReal x, PetscReal *q) {
+    q[0] = 1.0;
+    q[1] = 0.0;
+    return 0;
+}
 
 // see LeVeque Figure 13.1
 static PetscErrorCode swater_hump(PetscReal t, PetscReal x, PetscReal *q) {
@@ -68,7 +95,7 @@ static PetscErrorCode swater_dam(PetscReal t, PetscReal x, PetscReal *q) {
 
 static PetscErrorCode swater_g(PetscReal t, PetscReal x, PetscReal *q, PetscReal *g) {
     g[0] = 0.0;
-    g[1] = 0.0;
+    g[1] = - swater_grav * q[0] * swater_bx;
     return 0;
 }
 
@@ -167,8 +194,8 @@ static PetscErrorCode swater_maxspeed(PetscReal t, PetscReal x, PetscReal *q,
 }
 
 
-typedef enum {SW_HUMP,SW_DAM} SWInitialType;
-static const char* SWInitialTypes[] = {"hump","dam",
+typedef enum {SW_FLAT,SW_HUMP,SW_DAM} SWInitialType;
+static const char* SWInitialTypes[] = {"flat","hump","dam",
                                        "SWInitialType", "", NULL};
 
 PetscErrorCode  SWaterInitializer(ProblemCtx *user) {
@@ -184,6 +211,8 @@ PetscErrorCode  SWaterInitializer(ProblemCtx *user) {
     ierr = PetscOptionsEnum("-initial", "shallow water initial condition",
                "swater.h",SWInitialTypes,(PetscEnum)(initial),(PetscEnum*)&initial,
                NULL); CHKERRQ(ierr);
+    ierr = PetscOptionsReal("-bx", "constant bathymetry slope",
+               "swater.h",swater_bx,&swater_bx,NULL); CHKERRQ(ierr);
     ierr = PetscOptionsEnd(); CHKERRQ(ierr);
 
     user->n_dim = 2;
@@ -195,7 +224,17 @@ PetscErrorCode  SWaterInitializer(ProblemCtx *user) {
     user->t0_default = 0.0;
     user->tf_default = 3.0;
     user->periodic_bcs = PETSC_FALSE;
-    user->f_initial = (initial == SW_HUMP) ? &swater_hump : &swater_dam;
+    switch (initial) {
+        case SW_FLAT:
+            user->f_initial = &swater_flat;
+            break;
+        case SW_HUMP:
+            user->f_initial = &swater_hump;
+            break;
+        case SW_DAM:
+            user->f_initial = &swater_dam;
+            break;
+    }
     user->g_source = &swater_g;
     user->bdryflux_a = &swater_bdryflux_a;
     user->bdryflux_b = &swater_bdryflux_b;
