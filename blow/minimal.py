@@ -18,56 +18,76 @@ options and -minhelp for options to this program.""",
 parser.add_argument('-minhelp', action='store_true', default=False,
                     help='help for minimal.py options')
 parser.add_argument('-mx', type=int, default=3, metavar='MX',
-                    help='number of grid points in x-direction')
+                    help='number of (coarse) grid points in x-direction')
 parser.add_argument('-my', type=int, default=3, metavar='MY',
-                    help='number of grid points in y-direction')
+                    help='number of (coarse) grid points in y-direction')
 parser.add_argument('-o', metavar='NAME', type=str, default='',
                     help='output file name ending with .pvd')
 parser.add_argument('-k', type=int, default=1, metavar='K',
                     help='polynomial degree for Q_k elements')
-parser.add_argument('-refine', type=int, default=-1, metavar='X',
-                    help='number of refinement levels (e.g. for GMG)')
 parser.add_argument('-q', type=float, default=-0.5, metavar='Q',
                     help='exponent in coefficient')
+parser.add_argument('-refine', type=int, default=0, metavar='N',
+                    help='number of refinement levels (determines base grid for -sequence)')
+parser.add_argument('-sequence', type=int, default=0, metavar='N',
+                    help='number of grid-sequencing levels')
 args, unknown = parser.parse_known_args()
 if args.minhelp:
     parser.print_help()
 
-# Create mesh, enabling GMG via refinement using hierarchy
+# Create mesh, enabling GMG via refinement using hierarchy, and enabling grid
+# sequencing (by solver loop with prolong below)
 mx, my = args.mx, args.my
 mesh = UnitSquareMesh(mx-1, my-1, quadrilateral=True)
+totallevs = args.refine + args.sequence
+if totallevs > 0:
+    hierarchy = MeshHierarchy(mesh, totallevs)
 if args.refine > 0:
-    hierarchy = MeshHierarchy(mesh, args.refine)
-    mesh = hierarchy[-1]     # the fine mesh
-    mx, my = (mx-1) * 2**args.refine + 1, (my-1) * 2**args.refine + 1
-x,y = SpatialCoordinate(mesh)
+    mesh = hierarchy[args.refine]
 mesh._plex.viewFromOptions('-dm_view')
+mx, my = (mx-1) * 2**args.refine + 1, (my-1) * 2**args.refine + 1
 # to print coordinates:  print(mesh.coordinates.dat.data)
 
-# Define function space, right-hand side, and weak form.
+# Grid-sequencing loop.  FIXME not needed if -snes_grid_sequence implemented
 W = FunctionSpace(mesh, 'Lagrange', degree=args.k)
 u = Function(W)  # initialized to zero here
-v = TestFunction(W)
-F = ((1.0 + dot(grad(u),grad(u)))**args.q * dot(grad(u), grad(v))) * dx
+for j in range(args.sequence+1):
+    # Define weak form
+    v = TestFunction(W)
+    F = ((1.0 + dot(grad(u),grad(u)))**args.q * dot(grad(u), grad(v))) * dx
 
-# Define Dirichlet boundary conditions, also the exact solution
-c = 1.1
-g_bdry = Function(W).interpolate(c * cosh(x/c) * sin(acos( (y/c) / cosh(x/c) )))
-bdry_ids = (1, 2, 3, 4)   # all four sides of boundary
-bc = DirichletBC(W, g_bdry, bdry_ids)
+    # Define Dirichlet boundary conditions, also the exact solution
+    c = 1.1
+    x,y = SpatialCoordinate(mesh)
+    g_bdry = Function(W).interpolate(c * cosh(x/c) * sin(acos( (y/c) / cosh(x/c) )))
+    bdry_ids = (1, 2, 3, 4)   # all four sides of boundary
+    bc = DirichletBC(W, g_bdry, bdry_ids)
 
-# Solve nonlinear system:  F(u) = 0
-solve(F == 0, u, bcs = [bc], options_prefix = 's',
-      solver_parameters = {'snes_type': 'newtonls',
-                           'ksp_type': 'cg'})
+    # Solve nonlinear system:  F(u) = 0
+    solve(F == 0, u, bcs = [bc], options_prefix = 's',
+          solver_parameters = {'snes_type': 'newtonls',
+                               'ksp_type': 'cg'})
 
-# Print numerical error in L_infty norm
-elementstr = 'Q^%d' % args.k
-udiff = Function(W).interpolate(u - g_bdry)
-with udiff.dat.vec_ro as vudiff:
-    error_Linf = abs(vudiff).max()[1]
-PETSc.Sys.Print('done on %d x %d grid of Q_%d:  error |u-uexact|_inf = %.3e' \
-      % (mx,my,args.k,error_Linf))
+    # Print numerical error in L_infty norm
+    elementstr = 'Q^%d' % args.k
+    udiff = Function(W).interpolate(u - g_bdry)
+    with udiff.dat.vec_ro as vudiff:
+        error_Linf = abs(vudiff).max()[1]
+    spaces = ''
+    for l in range(args.sequence - j):
+        spaces += '  '
+    PETSc.Sys.Print('%sdone on %d x %d grid of Q_%d:  error |u-uexact|_inf = %.3e' \
+          % (spaces,mx,my,args.k,error_Linf))
+
+    # generate initial iterate at next level by interpolation
+    if j < args.sequence:
+        ucoarse = u.copy()
+        mesh = hierarchy[args.refine+j+1]
+        mx, my = (mx-1) * 2 + 1, (my-1) * 2 + 1
+        mesh._plex.viewFromOptions('-dm_view')
+        W = FunctionSpace(mesh, 'Lagrange', degree=args.k)
+        u = Function(W)
+        prolong(ucoarse,u)
 
 # Optionally save to a .pvd file viewable with Paraview
 if len(args.o) > 0:
