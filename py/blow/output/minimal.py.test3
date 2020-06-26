@@ -1,0 +1,6 @@
+Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 7
+    done on 3 x 3 grid of Q_2:  error |u-uexact|_inf = 2.514e-03
+Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 3
+  done on 5 x 5 grid of Q_2:  error |u-uexact|_inf = 9.004e-04
+Nonlinear s_ solve converged due to CONVERGED_FNORM_RELATIVE iterations 3
+done on 9 x 9 grid of Q_2:  error |u-uexact|_inf = 2.285e-04

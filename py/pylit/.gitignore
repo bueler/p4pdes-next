@@ -1,0 +1,10 @@
+*~
+*.pyc
+/doc/build/*
+/README.html
+/doc/logo/*.png
+/doc/logo/*.ico
+/doc/conf.py.txt
+/doc/examples/pylit.py.txt
+/doc/examples/*.py
+/doc/examples/*.sty
