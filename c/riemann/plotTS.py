@@ -24,14 +24,20 @@ Try "make petscPyScripts" before running this script.
 
 trajectory example: FIXME
 
-1D example using the shallow water problem from riemann.c,acoustic.h:
+1D example using the acoustic problem from riemann.c and acoustic.h:
    $ cd p4pdes-next/riemann
    $ make riemann
-   $ ./riemann -problem swater -initial hump -da_grid_x 1000 -limiter minmod -ts_monitor binary:t.dat -ts_monitor_solution binary:q.dat
-   $ ./plotTS.py -mx 1000 -dof 2 -c 0 -ylabel "h (height)" -ax -5.0 -bx 5.0 -cellcentered t.dat q.dat
-   $ ./plotTS.py -mx 1000 -dof 2 -c 1 -ylabel "h u (momentum)" -ax -5.0 -bx 5.0 -cellcentered t.dat q.dat
+   $ ./riemann -problem acoustic -da_grid_x 1000 -limiter minmod -ts_monitor binary:t.dat -ts_monitor_solution binary:q.dat
+Now you can write the first component to the screen:
+   $ ./plotTS.py -mx 1000 -dof 2 -c 0 -ylabel "p (pressure)" -ax -1.0 -bx 1.0 -cellcentered t.dat q.dat
+Or write the second component to files:
+   $ mkdir acoustic
+   $ ./plotTS.py -mx 1000 -dof 2 -c 1 -ylabel "u (velocity)" -ax -1.0 -bx 1.0 -cellcentered t.dat q.dat -oroot acoustic/bar
+Now view generated image files acoustic/barXXX.png.
 
 2D example: FIXME
+
+See also: plotsw.py (for the shallow water equations case of riemann.c).
 '''
 
 import PetscBinaryIO

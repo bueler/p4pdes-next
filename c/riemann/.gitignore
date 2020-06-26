@@ -1,2 +1,7 @@
 /riemann
+/PetscBinaryIO.py
+/petsc_conf.py
+__pycache__/
+/*.dat
+/*.dat.info
 
