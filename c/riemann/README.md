@@ -3,7 +3,9 @@ riemann/
 
 ### compile and run
 
-The code is `riemann.c`.  The problems it solves are in `.h` files.  Do this to build and run the default example from `acoustic.h`:
+The PETSc code here is `riemann.c`.  The problems it solves are in several `.h` files; see `cases.h` for more.
+
+Do this to build and run the default example from `acoustic.h`:
 
         $ make riemann
         $ ./riemann -help intro     # basic info

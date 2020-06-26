@@ -81,7 +81,7 @@ parser.add_argument('-oroot',metavar='ROOT',
 parser.add_argument('-pause',metavar='X', type=float, default=0.01,
                     help='seconds pause between frames in on-screen movie')
 parser.add_argument('-ylabel',metavar='LABEL', default='',
-                    help='y-axis labe (1D frames case)')
+                    help='y-axis label (1D frames case)')
 args = parser.parse_args()
 
 io = PetscBinaryIO.PetscBinaryIO()
