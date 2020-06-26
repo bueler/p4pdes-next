@@ -33,9 +33,7 @@ For example, the following generates a movie from the `traffic.h` case:
 
 This generates files `traffic/barXXX.png` which can be viewed with an image viewer.  To actually generate a `.m4v` or similar movie, consider using [`ffmpeg`](https://www.ffmpeg.org/).
 
-The similar image-generating script `plotsw.py` is able to correctly display the water surface.  (Note eta = h + B; see `swater.h`.)  For example:
-
-        $ FIXME
+The similar image-generating script `plotsw.py` is able to correctly display the water surface for shallow water runs where there is linear bathymetry B(x).  (Note eta(t,x) = h(t,x) + B(x) in `./riemann -problem swater`.  See `swater.h`.)  See the help file of `plotsw.py` for plotting examples.
 
 ### references
 
