@@ -1,5 +1,6 @@
 from firedrake.petsc import PETSc
-foo = PETSc.Viewer(PETSc.Viewer.Type.ASCII).create()
+foo = PETSc.Viewer().STDOUT()
+foo.printfASCII('foo\n')
 foo.pushASCIITab()
-foo.printfASCII('foo')
+foo.printfASCII('foo\n')
 
