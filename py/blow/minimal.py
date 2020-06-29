@@ -59,6 +59,9 @@ if args.refine > 0:
 # Grid-sequencing loop
 W = FunctionSpace(mesh, 'Lagrange', degree=args.k)
 u = Function(W)  # initialized to zero here
+for j in range(args.sequence):
+    #PETSc.Viewer.STDOUT(comm=PETSc.Object(PETSc.SNES).getComm()).pushASCIITab() seg faults
+    PETSc.Viewer.STDOUT().pushASCIITab() # does not affect tabs from e.g. -snes_converged_reason
 for j in range(args.sequence+1):    # always runs once
     # Define weak form
     v = TestFunction(W)
@@ -71,18 +74,12 @@ for j in range(args.sequence+1):    # always runs once
     bdry_ids = (1, 2, 3, 4)   # all four sides of boundary are Dirichlet
     bc = DirichletBC(W, g_bdry, bdry_ids)
 
+    PETSc.Viewer.STDOUT().printfASCII('')  # FIXME hack to affect tabs
+
     # Solve nonlinear system:  F(u) = 0
     solve(F == 0, u, bcs = [bc], options_prefix = 's',
           solver_parameters = {'snes_type': 'newtonls',
                                'ksp_type': 'cg'})
-
-    # Print numerical error in L_infty norm
-    udiff = Function(W).interpolate(u - g_bdry)
-    with udiff.dat.vec_ro as vudiff:
-        error_Linf = abs(vudiff).max()[1]
-    spaces = (args.sequence - j) * '  '
-    PETSc.Sys.Print('%sdone on %d x %d grid of Q_%d:  error |u-uexact|_inf = %.3e' \
-          % (spaces,mx,my,args.k,error_Linf))
 
     # Generate initial iterate at next level by interpolation from solution
     if j < args.sequence:
@@ -92,6 +89,14 @@ for j in range(args.sequence+1):    # always runs once
         W = FunctionSpace(mesh, 'Lagrange', degree=args.k)
         u = Function(W)
         prolong(ucoarse,u)
+        PETSc.Viewer.STDOUT().popASCIITab()
+
+# Print numerical error in L_infty norm
+udiff = Function(W).interpolate(u - g_bdry)
+with udiff.dat.vec_ro as vudiff:
+    error_Linf = abs(vudiff).max()[1]
+PETSc.Sys.Print('done on %d x %d grid of Q_%d:  error |u-uexact|_inf = %.3e' \
+      % (mx,my,args.k,error_Linf))
 
 # Optionally save to a .pvd file viewable with Paraview
 if len(args.o) > 0:
