@@ -11,11 +11,10 @@ on the unit square S=(0,1)^2 subject to Dirichlet boundary conditions
 u = g(x,y).  Power q defaults to -1/2, but it can be set using -q.
 Catenoid boundary conditions are implemented; this is an exact solution.
 (Compare c/ch7/minimal.c at https://github.com/bueler/p4pdes.)
-The discretization is by Q_k finite elements; the default is k=1 but it
-can be set by using -k.  This code is multigrid (GMG) capable (-s_pc_type mg)
-and it implements grid-sequencing by replacing the functionality of
--snes_grid_sequence in PETSc codes.  The prefix for PETSc solver options is
-'s_'.  Use -help for PETSc options and -minhelp for options to this program.""",
+The discretization is by Q_k finite elements; the default is k=1 but it can be
+set by using -k.  Prefix for PETSc solver options is 's_'.  This code is
+multigrid (GMG) capable (-s_pc_type mg) and it implements grid-sequencing
+(-sequence).  Use -help for PETSc options and -minhelp for program options.""",
     formatter_class=RawTextHelpFormatter,add_help=False)
 parser.add_argument('-minhelp', action='store_true', default=False,
                     help='help for minimal.py options')
@@ -27,6 +26,8 @@ parser.add_argument('-my', type=int, default=3, metavar='MY',
                     help='number of (coarse) grid points in y-direction')
 parser.add_argument('-o', metavar='NAME', type=str, default='',
                     help='output file name ending with .pvd')
+parser.add_argument('-printcoords', action='store_true', default=False,
+                    help='print coordinates of mesh nodes')
 parser.add_argument('-q', type=float, default=-0.5, metavar='Q',
                     help='exponent in coefficient')
 parser.add_argument('-refine', type=int, default=0, metavar='N',
@@ -53,10 +54,12 @@ if args.refine > 0:
     mesh = hierarchy[args.refine]
     mx, my = (mx-1) * 2**args.refine + 1, (my-1) * 2**args.refine + 1
 
-# to view mesh:  mesh._plex.viewFromOptions('-dm_view')
-#                print(mesh.coordinates.dat.data)
+# Two views of the mesh
+mesh._topology_dm.viewFromOptions('-dm_view')
+if args.printcoords:
+    print(mesh.coordinates.dat.data)
 
-# Grid-sequencing loop
+# Grid-sequencing loop;  replaces -snes_grid_sequence in PETSc codes
 W = FunctionSpace(mesh, 'Lagrange', degree=args.k)
 u = Function(W)  # initialized to zero here
 for j in range(args.sequence+1):    # always runs once
