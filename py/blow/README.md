@@ -21,7 +21,9 @@ The finest grid here is 513x513 and 10 digit accuracy is achieved at all nodes.
 
 ### blow.py
 
-FIXME The above code `minimal.py` solves a scalar, nonlinear, elliptic PDE for a surface z = u(x,y).  The plan for this code is that it solves the minimal surface equation but in parametric form, that is, for a surface in the form x = x(s,t), y = y(s,t), z = z(s,t).
+The above code solves a scalar, nonlinear, elliptic PDE for a surface z = u(x,y).  The plan for `blow.py` is that it solves the minimal surface equation but in parametric form, that is, for a surface in the form x = x(s,t), y = y(s,t), z = z(s,t).
+
+However, the current form of `blow.py` just computes a parameterized sphere.
 
 ### references
 
