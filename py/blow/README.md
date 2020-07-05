@@ -19,11 +19,13 @@ To see a high-accuracy example using a full nonlinear multigrid cycle, i.e. grid
 
 The finest grid here is 513x513 and 10 digit accuracy is achieved at all nodes.
 
+### sphere.py
+
+This silly code simply uses Firedrake to compute a parameterized sphere suitable for viewing in Paraview.
+
 ### blow.py
 
-The above code solves a scalar, nonlinear, elliptic PDE for a surface z = u(x,y).  The plan for `blow.py` is that it solves the minimal surface equation but in parametric form, that is, for a surface in the form x = x(s,t), y = y(s,t), z = z(s,t).
-
-However, the current form of `blow.py` just computes a parameterized sphere.
+The above `minimal.py` code solves a scalar, nonlinear, elliptic PDE for a surface z = u(x,y).  The plan for `blow.py` is that it solves the minimal surface equation but in parametric form, that is, for a surface in the form x = x(s,t), y = y(s,t), z = z(s,t).
 
 ### references
 
