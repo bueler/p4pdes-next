@@ -5,7 +5,7 @@ from firedrake import *
 from firedrake.petsc import PETSc
 
 parser = ArgumentParser(description="""
-Use Firedrake's nonlinear solver for the minimial surface problem
+Use Firedrake's nonlinear solver for the minimial surface equation
   - div ( (1 + |grad u|^2)^q grad u ) = 0
 on the unit square S=(0,1)^2 subject to Dirichlet boundary conditions
 u = g(x,y).  Power q defaults to -1/2, but it can be set using -q.

@@ -9,13 +9,18 @@ runminimal_2:
 runminimal_3:
 	-@../../testit.sh minimal.py "-sequence 2 -k 2 -s_snes_converged_reason -s_pc_type mg" 1 3
 
+runblow_1:
+	-@../../testit.sh blow.py "-s_pc_type mg -s_snes_converged_reason -s_ksp_converged_reason -refine 1 -sequence 1" 1 1
+
 test_minimal: runminimal_1 runminimal_2 runminimal_3
 
-test: test_minimal
+test_blow: runblow_1
+
+test: test_minimal test_blow
 
 # etc
 
-.PHONY: clean runminimal_1 runminimal_2 runminimal_3 test_minimal test
+.PHONY: clean runminimal_1 runminimal_2 runminimal_3 test_minimal runblow_1 test_blow test
 
 clean:
 	@rm -f *.pyc *.geo *.msh *.pvd *.vtu maketmp tmp difftmp
