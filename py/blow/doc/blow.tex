@@ -1,0 +1,70 @@
+\documentclass[12pt]{amsart}
+
+\usepackage{verbatim}
+
+% math macros
+\newcommand\bb{\mathbf{b}}
+\newcommand\bbf{\mathbf{f}}
+\newcommand\bn{\mathbf{n}}
+\newcommand\bq{\mathbf{q}}
+\newcommand\bu{\mathbf{u}}
+\newcommand\bv{\mathbf{v}}
+\newcommand\by{\mathbf{y}}
+
+\newcommand\bQ{\mathbf{Q}}
+\newcommand\bV{\mathbf{V}}
+\newcommand\bX{\mathbf{X}}
+
+\newcommand\CC{\mathbb{C}}
+\newcommand{\DDt}[1]{\ensuremath{\frac{d #1}{d t}}}
+\newcommand{\ddt}[1]{\ensuremath{\frac{\partial #1}{\partial t}}}
+\newcommand{\ddx}[1]{\ensuremath{\frac{\partial #1}{\partial x}}}
+\newcommand{\ddy}[1]{\ensuremath{\frac{\partial #1}{\partial y}}}
+\newcommand{\ddxp}[1]{\ensuremath{\frac{\partial #1}{\partial x'}}}
+\newcommand{\ddz}[1]{\ensuremath{\frac{\partial #1}{\partial z}}}
+\newcommand{\ddxx}[1]{\ensuremath{\frac{\partial^2 #1}{\partial x^2}}}
+\newcommand{\ddyy}[1]{\ensuremath{\frac{\partial^2 #1}{\partial y^2}}}
+\newcommand{\ddxy}[1]{\ensuremath{\frac{\partial^2 #1}{\partial x \partial y}}}
+\newcommand{\ddzz}[1]{\ensuremath{\frac{\partial^2 #1}{\partial z^2}}}
+\newcommand{\Div}{\nabla\cdot}
+\newcommand\eps{\epsilon}
+\newcommand{\grad}{\nabla}
+\newcommand{\ihat}{\mathbf{i}}
+\newcommand{\ip}[2]{\ensuremath{\left<#1,#2\right>}}
+\newcommand{\jhat}{\mathbf{j}}
+\newcommand{\khat}{\mathbf{k}}
+\newcommand{\nhat}{\mathbf{n}}
+\newcommand\lam{\lambda}
+\newcommand\lap{\triangle}
+\newcommand\Matlab{\textsc{Matlab}\xspace}
+\newcommand\RR{\mathbb{R}}
+\newcommand\vf{\varphi}
+
+
+\title{A different approach to minimal surfaces: \\ Documentation of code \texttt{blow.py}}
+
+\author{Ed Bueler}
+
+
+\begin{document}
+
+\begin{abstract}
+This brief document explains the new code \texttt{blow.py}.  Note that \texttt{minimal.py} solves the minimal surface equation for a surface of the form $z=u(x,y)$.  The new code instead solves for a parameterized surface of the form $\bX(s,t) = (x(s,t),y(s,t),z(s,t))$.  In this paper we derive a (not apparently well-known) first-variation formula for the Dirichlet problem of finding $\bX: \Omega \subset \RR^2 \to \RR^3$ such that $\bX$ is given along $\partial \Omega$.  The weak formulation corresponding to this first-variation formula is not well-posed, as one can see by its invariance with respect to reparameterization.  However, it apparently becomes well-posed if we add a Laplacian term for two of the components.  [FIXME: Maybe this does relate to isothermal coordinates after all.]
+\end{abstract}
+
+\maketitle
+
+\thispagestyle{empty}
+
+%\baselineskip=12pt
+%\parskip=5pt
+
+\section{Introduction}
+
+FIXME
+
+%         References
+%\bibliography{XX}
+%\bibliographystyle{siam}
+
+\end{document}
