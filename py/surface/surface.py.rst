@@ -1,48 +1,53 @@
-#!/usr/bin/env python3
+Differential geometry of surfaces
+=================================
 
-#FIXME: document better, here and in a .tex for the derivation of the weak form
+This is not the usual story of differential geometry.  It is instead
+an idiot's guide, with Firedrake as a crutch to stumble through some
+calculus of surfaces, especially minimal surfaces, eventually reaching
+a better understanding and an efficient finite element formulation.
 
-#FIXME: add a minimal surface that is not so boring, with x(s,t), y(s,t) less
-#       trivial
+We work with parameterized surfaces in :math:`\mathbb{R}^3`,
 
-from argparse import ArgumentParser, RawTextHelpFormatter
-from firedrake import *
-from firedrake.petsc import PETSc
+.. math::
 
-parser = ArgumentParser(description="""
-Solves a parameterized-surface version of the minimal surface equation.
-Compare minimal.py.""",
-    formatter_class=RawTextHelpFormatter,add_help=False)
-parser.add_argument('-blowhelp', action='store_true', default=False,
-                    help='help for blow.py options')
-parser.add_argument('-k', type=int, default=1, metavar='K',
-                    help='polynomial degree for Q_k elements')
-parser.add_argument('-ms', type=int, default=3, metavar='MS',
-                    help='number of (coarse) grid points in s-direction')
-parser.add_argument('-mt', type=int, default=3, metavar='MT',
-                    help='number of (coarse) grid points in t-direction')
-parser.add_argument('-o', metavar='NAME', type=str, default='',
-                    help='output file name ending with .pvd')
-parser.add_argument('-printcoords', action='store_true', default=False,
-                    help='print coordinates of mesh nodes')
-parser.add_argument('-refine', type=int, default=0, metavar='N',
-                    help='number of refinement levels (determines base grid for -sequence)')
-parser.add_argument('-sequence', type=int, default=0, metavar='N',
-                    help='number of grid-sequencing levels')
-parser.add_argument('-zeroinitial', action='store_true', default=False,
-                    help='initialize with X(s,t)=0 (including x,y)')
-args, unknown = parser.parse_known_args()
-assert (args.k >= 1)
-assert (args.ms >= 2)
-assert (args.mt >= 2)
-assert (args.refine >= 0)
-assert (args.sequence >= 0)
-if args.blowhelp:
-    parser.print_help()
+  X(s,t) = (x(s,t),y(s,t),z(s,t))
 
-# Create mesh in parameter space (s,t)
-ms, mt = args.ms, args.mt
-mesh = UnitSquareMesh(ms-1, mt-1, quadrilateral=True)
+where :math:`x,y,z` are scalar functions.  Assume
+:math:`(s,t)\in \Omega \subset \mathbb{R}^2`.  Most calculus books
+have a simple formula for the area of a surface, namely
+
+.. math::
+
+  A(X) = \int_{\quad\Omega} \|X_s \times X_t\| \,\mathrm{d} s \mathrm{d} t
+
+where :math:`X_s,X_t` denote partial derivatives of the vector-valued
+function :math:`X` and the norm :math:`\|\cdot\|` is the usual (Euclidean)
+vector magnitude in :math:`\mathbb{R}^3`.
+
+This demonstration shows how to solve for, and plot, parameterized surfaces
+which are extremals of this area functional, namely minimal surfaces.
+We will solve the Dirichlet problem, a.k.a. Plateau's problem or the soap
+bubble problem:
+
+.. math::
+
+  X\big|_{\partial \Omega} = G
+
+where :math:`G(s,t)` is a known function.
+
+To find a minimum we take a derivative and set it to zero.  In this case
+we compute the first variation of :math:`A(X)`.  
+
+  
+
+.. math::
+
+  \|X_s \times X_t\| = \left[\left(X_s\times X_t\right)\cdot  \left(X_s\times X_t\right)\right]^{1/2}
+
+We set up a mesh on :math:`(s,t)` space in the usual way. ::
+
+  from firedrake import *
+  mesh = UnitSquareMesh(9,9)
 
 # Enable GMG by refinement hierarchy, and grid-sequencing by further refinement
 if args.refine + args.sequence > 0:
@@ -114,4 +119,7 @@ if len(args.o) > 0:
     PETSc.Sys.Print('saving solution to %s ...' % args.o)
     X.rename('X(s,t)')
     File(args.o).write(X)
+
+.. FIXME: add a minimal surface that is not so boring, with x(s,t), y(s,t) less
+          trivial
 
