@@ -2,19 +2,22 @@ Differential geometry of surfaces
 =================================
 
 This is not the usual story of differential geometry.  It is instead
-an idiot's guide, with Firedrake as a crutch to stumble through some
-calculus of surfaces, especially minimal surfaces, eventually reaching
-a better understanding and an efficient finite element formulation.
+an idiot's guide, using Firedrake_ to allow a fool to stumble through
+the calculus of minimal surfaces, eventually reaching
+a better understanding and a coherent finite element formulation.
 
-We work with parameterized surfaces in :math:`\mathbb{R}^3`,
+Parameterized surfaces and the area functional
+----------------------------------------------
+
+We will work with parameterized surfaces in :math:`\mathbb{R}^3`,
 
 .. math::
 
   X(s,t) = (x(s,t),y(s,t),z(s,t))
 
-where :math:`x,y,z` are scalar functions.  Assume
-:math:`(s,t)\in \Omega \subset \mathbb{R}^2`.  Most calculus books
-have a simple formula for the area of a surface, namely
+where :math:`x,y,z` are scalar functions, and we assume
+:math:`(s,t)\in \Omega \subset \mathbb{R}^2`.  Now, most calculus books
+have this simple formula for the area of a surface,
 
 .. math::
 
@@ -22,104 +25,128 @@ have a simple formula for the area of a surface, namely
 
 where :math:`X_s,X_t` denote partial derivatives of the vector-valued
 function :math:`X` and the norm :math:`\|\cdot\|` is the usual (Euclidean)
-vector magnitude in :math:`\mathbb{R}^3`.
+vector magnitude in :math:`\mathbb{R}^3`.  That is, the area element of
+a parameterized surface is
+:math:`\mathrm{d} A = \|X_s \times X_t\| \,\mathrm{d} s \mathrm{d} t`,
+because the magnitude of the cross product of the tangent vectors
+:math:`X_s,X_t` gives the area of the parallelogram they span.
 
-This demonstration shows how to solve for, and plot, parameterized surfaces
-which are extremals of this area functional, namely minimal surfaces.
-We will solve the Dirichlet problem, a.k.a. Plateau's problem or the soap
-bubble problem:
+This demonstration will show how to solve for, and plot, parameterized surfaces
+which are extremals of this area functional :math:`A(X)`.  We will
+solve the Dirichlet problem, a.k.a. Plateau's problem or the soap
+bubble problem, subject to boundary conditions
 
 .. math::
 
   X\big|_{\partial \Omega} = G
 
-where :math:`G(s,t)` is a known function.
+where :math:`G(s,t)` is a known function with values in :math:`\mathbb{R}^3`.
+In words, the surface :math:`X` spans the wire frame defined by :math:`G`.
 
-To find a minimum we take a derivative and set it to zero.  In this case
-we compute the first variation of :math:`A(X)`.  
 
-  
+Attempt 1: first-variation of the area functional
+-----------------------------------------------------
+
+To find a minimum we traditionally take a derivative and set it to zero, and
+here we compute the first variation of the area functional.
+
+Suppose :math:`X` is a minimizer and suppose
+:math:`\Phi:\Omega \to \mathbb{R}^3` is another function such that
+:math:`\Phi\big|_{\partial \Omega}=0`.  Then for any
+:math:`\epsilon\in\mathbb{R}` the parameterized surface
+:math:`X+\epsilon \Phi` spans the same wire frame as :math:`X`.  Define
 
 .. math::
 
-  \|X_s \times X_t\| = \left[\left(X_s\times X_t\right)\cdot  \left(X_s\times X_t\right)\right]^{1/2}
+  A(\epsilon) = \int_{\quad\Omega} \|(X_s+\epsilon \Phi_s) \times (X_t+\epsilon \Phi_t)\| \,\mathrm{d} s \mathrm{d} t
 
-We set up a mesh on :math:`(s,t)` space in the usual way. ::
+Before proceeding observe that
+:math:`\|Y \times Z\| = \left[\left(Y\times Z\right)\cdot  \left(Y\times Z\right)\right]^{1/2}`.
+Thus we may take the derivative by using the chain rule for the 1/2 power and
+the product rules for the cross and dot products.  Also let
+
+.. math::
+
+  N(X) = \frac{X_s \times X_t}{\|X_s \times X_t\|}
+
+be the unit normal tangent field on the surface.  Now compute:
+
+.. math::
+
+  \frac{dA}{d\epsilon}\bigg|_{\epsilon=0} &= \int_{\quad\Omega} \frac{1}{2 \|X_s \times X_t\|} \, \frac{d}{d\epsilon} \left[(X_s+\epsilon \Phi_s) \times (X_t+\epsilon \Phi_t) \cdot (X_s+\epsilon \Phi_s) \times (X_t+\epsilon \Phi_t)\right]_{\epsilon=0} \mathrm{d} s \mathrm{d} t \\
+    &= \int_{\quad\Omega} \frac{1}{2 \|X_s \times X_t\|} \, 2 (X_s \times X_t) \cdot \frac{d}{d\epsilon} \left[(X_s+\epsilon \Phi_s) \times (X_t+\epsilon \Phi_t)\right]_{\epsilon=0} \mathrm{d} s \mathrm{d} t \\
+    &= \int_{\quad\Omega} N(X) \cdot \left[X_s \times \Phi_t - X_t \times \Phi_s\right] \,\mathrm{d} s \mathrm{d} t
+
+(This reasonably-simple form of the first variation is hard to find in
+the literature, but undoubtedly known to e.g. Plateau and Lagrange.)
+
+Thus we have a variational principle, codeable into Firedrake_:
+
+.. math::
+
+  0 = \int_{\quad\Omega} N(X) \cdot \left[X_s \times \Phi_t - X_t \times \Phi_s\right] \,\mathrm{d} s \mathrm{d} t
+
+for all :math:`\Phi` which are zero on the boundary.  As our first, easy
+problem we try to compute the catenoid_, a known minimal surface, on a unit
+square using :math:`P_1` elements.  Clearly the problem is nonlinear in
+:math:`X` so we use the `F == 0` form of `solve()`.
+
+We set up a mesh on :math:`(s,t)` space, build the function space, and
+use a flat surface as an initial iterate. ::
 
   from firedrake import *
-  mesh = UnitSquareMesh(9,9)
+  mesh = UnitSquareMesh(5,5)
 
-# Enable GMG by refinement hierarchy, and grid-sequencing by further refinement
-if args.refine + args.sequence > 0:
-    hierarchy = MeshHierarchy(mesh, args.refine + args.sequence)
-if args.refine > 0:
-    mesh = hierarchy[args.refine]
-    ms, mt = (ms-1) * 2**args.refine + 1, (mt-1) * 2**args.refine + 1
+  V = VectorFunctionSpace(mesh, 'Lagrange', degree=1, dim=3)
+  Phi = TestFunction(V)
+  s,t = SpatialCoordinate(mesh)
+  X = Function(V).interpolate(as_vector([cos(pi*s),sin(pi*s),2*t-1]))
 
-# Two views of the mesh
-mesh._topology_dm.viewFromOptions('-dm_view')
-#V.dm.viewFromOptions('-dm_view')  # dumps a Vec, unfortunately
-if args.printcoords:
-    print(mesh.coordinates.dat.data)
+We define the weak form; note that cross and inner products make this easy. ::
 
-# Function space for a parameterized surface, and initial guess
-V = VectorFunctionSpace(mesh, 'Lagrange', degree=args.k, dim=3)
-if args.zeroinitial:
-    X = Function(V)
-else:
-    s,t = SpatialCoordinate(mesh)
-    X = Function(V).interpolate(as_vector([s,t,1]))   # z=1 much better than z=0 ... why?
+  prod = cross(X.dx(0),X.dx(1))
+  N = prod / sqrt(inner(prod,prod))
+  F = inner(N,cross(X.dx(0),Phi.dx(1)) - cross(X.dx(1),Phi.dx(0))) * dx
 
-# Grid-sequencing loop;  replaces -snes_grid_sequence in PETSc codes
-for j in range(args.sequence+1):    # always runs once
-    # Define weak form
-    Phi = TestFunction(V)
-    prod = cross(X.dx(0),X.dx(1))
-    N = prod / sqrt(inner(prod,prod))  # normal vector to surface
-    #FIXME: consider regularization here:
-    #N = prod / sqrt(1.0e-6 + inner(prod,prod))
-    F = inner(grad(X[0]),grad(Phi[0])) * dx \
-        + inner(grad(X[1]),grad(Phi[1])) * dx \
-        + inner(N,cross(X.dx(0),Phi.dx(1)) - cross(X.dx(1),Phi.dx(0))) * dx
+The boundary values come from the catenoid_ exact solution. ::
 
-    # Define Dirichlet boundary conditions, also the exact solution
-    c = 1.1  # see example in Chapter 7 of Bueler, PETSc for PDEs
-    s,t = SpatialCoordinate(mesh)
-    g_bdry = c * cosh(s/c) * sin(acos( (t/c) / cosh(s/c) ))
-    bdry_ids = (1, 2, 3, 4)   # all four sides of boundary are Dirichlet
-    bcx = DirichletBC(V.sub(0), s, bdry_ids)
-    bcy = DirichletBC(V.sub(1), t, bdry_ids)
-    bcz = DirichletBC(V.sub(2), g_bdry, bdry_ids)
+  c = 1.1
+  Xexact = Function(V).interpolate(as_vector([c * cosh(2*t-1) * cos(pi*s),
+                                              c * cosh(2*t-1) * sin(pi*s),
+                                              c * (2*t-1)]))
+  bdry_ids = (1, 2, 3, 4)
+  bc = DirichletBC(V, Xexact, bdry_ids)
 
-    # Solve nonlinear system:  F(u) = 0
-    solve(F == 0, X, bcs = [bcx,bcy,bcz], options_prefix = 's',
-          solver_parameters = {'snes_type': 'newtonls',
-                               'ksp_type': 'cg'})
+Finally the solve uses PETSc_ SNES for Newton's method and a direct linear
+solve (for now). FIXME adjust atol so it converges.  ::
 
-    # Print numerical error in L_infty norm
-    udiff = Function(V).interpolate(X - as_vector([s,t,g_bdry]))
-    with udiff.dat.vec_ro as vudiff:
-        error_Linf = abs(vudiff).max()[1]
-    spaces = (args.sequence - j) * '  '
-    PETSc.Sys.Print('%sdone on %d x %d grid of Q_%d:  error |u-uexact|_inf = %.3e' \
-          % (spaces,ms,mt,args.k,error_Linf))
+  solve(F == 0, X, bcs = [bc,], options_prefix = 's',
+        solver_parameters = {'snes_type': 'newtonls',
+                             'ksp_type': 'preonly',
+                             'pc_type': 'lu'})
 
-    # Generate initial iterate at next level by interpolation from solution
-    if j < args.sequence:
-        Xcoarse = X.copy()
-        mesh = hierarchy[args.refine+j+1]
-        ms, mt = (ms-1) * 2 + 1, (mt-1) * 2 + 1
-        mesh._topology_dm.viewFromOptions('-dm_view')
-        V = VectorFunctionSpace(mesh, 'Lagrange', degree=args.k, dim=3)
-        X = Function(V)
-        prolong(Xcoarse,X)
+We save the solution for viewing with Paraview_.  However, we have to modify
+it to remove the base domain for plot using Warp By Vector in Paraview_. ::
 
-# Optionally save to a .pvd file viewable with Paraview
-if len(args.o) > 0:
-    PETSc.Sys.Print('saving solution to %s ...' % args.o)
-    X.rename('X(s,t)')
-    File(args.o).write(X)
+  XX = Function(V).interpolate(as_vector([X[0]-s,X[1]-t,X[2]]))
+  XX.rename('X(s,t)')
+  File('Xsurface.pvd').write(XX)
 
-.. FIXME: add a minimal surface that is not so boring, with x(s,t), y(s,t) less
-          trivial
+FIXME run with ``-s_snes_monitor`` and ``-s_snes_atol 0.9`` to make it converge
+
+FIXME using Paraview_ and Surface With Edges see that elements are disappearing
+
+.. image:: figs/surface1.png
+   :width: 400 px
+
+FIXME this is a sign of the area functional not being coercive, which is true
+because arbitrary reparameterizations of the square :math:`\Omega` will give
+the same value
+
+FIXME so how to make it coercive?
+
+.. _Firedrake: https://www.firedrakeproject.org/
+.. _catenoid: https://en.wikipedia.org/wiki/Catenoid
+.. _Paraview: https://www.paraview.org/
+.. _PETSc: http://www.mcs.anl.gov/petsc/
 
