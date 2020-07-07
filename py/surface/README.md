@@ -25,7 +25,24 @@ This silly code simply uses Firedrake to compute a parameterized sphere suitable
 
 ### blow.py
 
-The above `minimal.py` code solves a scalar, nonlinear, elliptic PDE for a surface z = u(x,y).  The plan for `blow.py` is that it solves the minimal surface equation but in parametric form, that is, for a surface in the form x = x(s,t), y = y(s,t), z = z(s,t).
+The above `minimal.py` code solves a scalar, nonlinear, elliptic PDE for a surface z = u(x,y).  This one solves the same problem but in parametric form, that is, for a surface in the form x = x(s,t), y = y(s,t), z = z(s,t).  The first-variation of the area functional is made coercive by adding Laplacians to x,y.  (Which only works because we know the surface is a z = u(x,y).)
+
+### surface.py.rst
+
+UNDER CONSTRUCTION
+
+View the `pylit`/`reStructuredText` document this way:
+
+        $ restview surface.py.rst
+
+Extract a run-able code and run this way:
+
+        (firedrake) $ python2 ../pylit/pylit.py surface.py.rst
+        extract written to surface.py
+        (firedrake) $ python3 surface.py -s_snes_monitor
+
+It writes a file `Xsurface.pvd`.  View the result with Paraview and use
+Warp By Vector.
 
 ### references
 

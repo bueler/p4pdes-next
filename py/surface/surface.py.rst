@@ -136,7 +136,7 @@ FIXME run with ``-s_snes_monitor`` and ``-s_snes_atol 0.9`` to make it converge
 
 FIXME using Paraview_ and Surface With Edges see that elements are disappearing
 
-.. image:: figs/surface1.png
+.. image:: figs/Xsurface1.png
    :width: 400 px
 
 FIXME this is a sign of the area functional not being coercive, which is true
