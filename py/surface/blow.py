@@ -45,8 +45,7 @@ ms, mt = args.ms, args.mt
 mesh = UnitSquareMesh(ms-1, mt-1, quadrilateral=True)
 
 # Enable GMG by refinement hierarchy, and grid-sequencing by further refinement
-if args.refine + args.sequence > 0:
-    hierarchy = MeshHierarchy(mesh, args.refine + args.sequence)
+hierarchy = MeshHierarchy(mesh, args.refine + args.sequence)
 if args.refine > 0:
     mesh = hierarchy[args.refine]
     ms, mt = (ms-1) * 2**args.refine + 1, (mt-1) * 2**args.refine + 1
