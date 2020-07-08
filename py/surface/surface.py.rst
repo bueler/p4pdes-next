@@ -192,7 +192,7 @@ zero in the functional ::
                                               c * (2*t-1)]))
   bdry_ids = (1, 2, 3, 4)
   bc = DirichletBC(V, Xexact, bdry_ids)
-  X = Xexact.copy()  # FIXME
+  X = Xexact.copy(deepcopy=True)  # FIXME  INITIALIZING WITH SOLUTION!
   prod = cross(X.dx(0),X.dx(1))
   N = prod / sqrt(inner(prod,prod))
   F = inner(N,cross(X.dx(0),Phi.dx(1)) - cross(X.dx(1),Phi.dx(0))) * dx \
@@ -202,6 +202,15 @@ zero in the functional ::
         solver_parameters = params)
   saveforwarp(X,'surface3.pvd')
 
+FIXME Print numerical error in L_infty norm; currently ::
+
+  def printerror(X,Xexact):
+      Xdiff = Function(V).interpolate(X - Xexact)
+      with Xdiff.dat.vec_ro as vXdiff:
+          error_Linf = abs(vXdiff).max()[1]
+      PETSc.Sys.Print('  error |u-uexact|_inf = %.3e' % error_Linf)
+
+  printerror(X,Xexact)
 
 Attempt 4: specify the wireframe
 --------------------------------
@@ -212,16 +221,6 @@ and use its boundary as the parameter of a curve
 
 TODO
 ----
-
-
-FIXME Print numerical error in L_infty norm; currently ::
-
-  def printerror(X,Xexact):
-      Xdiff = Function(V).interpolate(X - Xexact)
-      with Xdiff.dat.vec_ro as vXdiff:
-          error_Linf = abs(vXdiff).max()[1]
-      PETSc.Sys.Print('  error |u-uexact|_inf = %.3e' % error_Linf)
-  #printerror(X,Xexact)
 
 FIXME more interesting surface and better visualization
 (e.g. with wireframe shown and raytrace to get shiny?)
