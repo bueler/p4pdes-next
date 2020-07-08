@@ -12,8 +12,11 @@ runminimal_3:
 runblow_1:
 	-@../../testit.sh blow.py "-s_pc_type mg -s_snes_converged_reason -s_ksp_converged_reason -refine 1 -sequence 1" 1 1
 
-surface.py:
+surface.py: surface.py.rst
 	python2 ../pylit/pylit.py surface.py.rst
+
+surf: surface.py
+	python3 surface.py
 
 # FIXME this may not work because surface.py is not executable?
 runsurface_1: surface.py
