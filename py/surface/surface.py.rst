@@ -118,13 +118,13 @@ The boundary values come from the catenoid_ exact solution. ::
   bc = DirichletBC(V, Xexact, bdry_ids)
 
 Finally the solve uses PETSc_ SNES for Newton's method and a direct linear
-solve (for now). FIXME why adjust atol so it converges.  ::
+solve (for now). FIXME explain why adjust atol so it converges.  ::
 
   params = {'snes_type': 'newtonls',
             'ksp_type': 'preonly',
             'pc_type': 'lu',
             'snes_monitor': None,
-            'snes_atol': 0.9}
+            'snes_atol': 1.0}
   PETSc.Sys.Print('***** solver attempt 1 *****')
   solve(F == 0, X, bcs = [bc,], options_prefix = 's',
         solver_parameters = params)
@@ -159,8 +159,9 @@ isothermal if and only iff they are harmonic [Op2000_, corollary 3.5.2]
 FIXME no longer need to cheat by setting nice initial or stopping iteration early ::
 
   X = Function(V)
+  eps = 1.0
   F = inner(N,cross(X.dx(0),Phi.dx(1)) - cross(X.dx(1),Phi.dx(0))) * dx \
-      + inner(grad(X),grad(Phi)) * dx
+      + eps * inner(grad(X),grad(Phi)) * dx
   params.update({'snes_atol': 1.0e-50})
   PETSc.Sys.Print('***** solver attempt 2 *****')
   solve(F == 0, X, bcs = [bc,], options_prefix = 's',
@@ -195,7 +196,7 @@ zero in the functional ::
   prod = cross(X.dx(0),X.dx(1))
   N = prod / sqrt(inner(prod,prod))
   F = inner(N,cross(X.dx(0),Phi.dx(1)) - cross(X.dx(1),Phi.dx(0))) * dx \
-      + inner(grad(X),grad(Phi)) * dx
+      + eps * inner(grad(X),grad(Phi)) * dx
   PETSc.Sys.Print('***** solver attempt 3 *****')
   solve(F == 0, X, bcs = [bc,], options_prefix = 's',
         solver_parameters = params)
