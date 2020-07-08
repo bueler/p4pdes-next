@@ -45,7 +45,7 @@ In words, the surface :math:`X` spans the wire frame defined by :math:`G`.
 
 
 Attempt 1: first-variation of the area functional
------------------------------------------------------
+-------------------------------------------------
 
 To find a minimum we traditionally take a derivative and set it to zero, and
 here we compute the first variation of the area functional.
@@ -118,32 +118,116 @@ The boundary values come from the catenoid_ exact solution. ::
   bc = DirichletBC(V, Xexact, bdry_ids)
 
 Finally the solve uses PETSc_ SNES for Newton's method and a direct linear
-solve (for now). FIXME adjust atol so it converges.  ::
+solve (for now). FIXME why adjust atol so it converges.  ::
 
+  params = {'snes_type': 'newtonls',
+            'ksp_type': 'preonly',
+            'pc_type': 'lu',
+            'snes_monitor': None,
+            'snes_atol': 0.9}
+  PETSc.Sys.Print('***** solver attempt 1 *****')
   solve(F == 0, X, bcs = [bc,], options_prefix = 's',
-        solver_parameters = {'snes_type': 'newtonls',
-                             'ksp_type': 'preonly',
-                             'pc_type': 'lu'})
+        solver_parameters = params)
 
 We save the solution for viewing with Paraview_.  However, we have to modify
 it to remove the base domain for plot using Warp By Vector in Paraview_. ::
 
-  XX = Function(V).interpolate(as_vector([X[0]-s,X[1]-t,X[2]]))
-  XX.rename('X(s,t)')
-  File('Xsurface.pvd').write(XX)
+  def saveforwarp(X,filename):
+      XX = Function(V).interpolate(as_vector([X[0]-s,X[1]-t,X[2]]))
+      XX.rename('X(s,t)')
+      PETSc.Sys.Print('  writing %s ...' % filename)
+      File(filename).write(XX)
 
-FIXME run with ``-s_snes_monitor`` and ``-s_snes_atol 0.9`` to make it converge
+  saveforwarp(X,'surface1.pvd')
 
 FIXME using Paraview_ and Surface With Edges see that elements are disappearing
 
-.. image:: figs/Xsurface1.png
-   :width: 400 px
-
-FIXME this is a sign of the area functional not being coercive, which is true
-because arbitrary reparameterizations of the square :math:`\Omega` will give
+FIXME this is because the area functional is not coercive:
+arbitrary reparameterizations of the square :math:`\Omega` will give
 the same value
 
-FIXME so how to make it coercive?
+.. image:: figs/surface1.png
+   :width: 400 px
+
+Attempt 2: making the area functional coercive
+----------------------------------------------
+
+FIXME just add a laplacian: isothermal coords always exist [Op2000_, theorem 3.4.1]
+and parameterizations of minimal surfaces (with zero mean curvature) are
+isothermal if and only iff they are harmonic [Op2000_, corollary 3.5.2]
+
+FIXME no longer need to cheat by setting nice initial or stopping iteration early ::
+
+  X = Function(V)
+  F = inner(N,cross(X.dx(0),Phi.dx(1)) - cross(X.dx(1),Phi.dx(0))) * dx \
+      + inner(grad(X),grad(Phi)) * dx
+  params.update({'snes_atol': 1.0e-50})
+  PETSc.Sys.Print('***** solver attempt 2 *****')
+  solve(F == 0, X, bcs = [bc,], options_prefix = 's',
+        solver_parameters = params)
+  saveforwarp(X,'surface2.pvd')
+
+FIXME much better
+
+.. image:: figs/surface2.png
+   :width: 400 px
+
+Attempt 3: higher resolution
+----------------------------
+
+FIXME I want it high res, e.g. 10^6 elements ... but here for now
+has h and p refinement
+
+FIXME this version initializes from exact; the issue is the division by
+zero in the functional ::
+
+  mesh = UnitSquareMesh(20,20)
+  V = VectorFunctionSpace(mesh, 'Lagrange', degree=2, dim=3)
+  Phi = TestFunction(V)
+  s,t = SpatialCoordinate(mesh)
+  c = 1.1
+  Xexact = Function(V).interpolate(as_vector([c * cosh(2*t-1) * cos(pi*s),
+                                              c * cosh(2*t-1) * sin(pi*s),
+                                              c * (2*t-1)]))
+  bdry_ids = (1, 2, 3, 4)
+  bc = DirichletBC(V, Xexact, bdry_ids)
+  X = Xexact.copy()  # FIXME
+  prod = cross(X.dx(0),X.dx(1))
+  N = prod / sqrt(inner(prod,prod))
+  F = inner(N,cross(X.dx(0),Phi.dx(1)) - cross(X.dx(1),Phi.dx(0))) * dx \
+      + inner(grad(X),grad(Phi)) * dx
+  PETSc.Sys.Print('***** solver attempt 3 *****')
+  solve(F == 0, X, bcs = [bc,], options_prefix = 's',
+        solver_parameters = params)
+  saveforwarp(X,'surface3.pvd')
+
+
+Attempt 4: specify the wireframe
+--------------------------------
+
+FIXME how to do this?  I.e. what if we do not know a formula for the minimal
+surface, from which we can get the boundary conditions? perhaps mesh the disk
+and use its boundary as the parameter of a curve
+
+TODO
+----
+
+
+FIXME Print numerical error in L_infty norm; currently ::
+
+  def printerror(X,Xexact):
+      Xdiff = Function(V).interpolate(X - Xexact)
+      with Xdiff.dat.vec_ro as vXdiff:
+          error_Linf = abs(vXdiff).max()[1]
+      PETSc.Sys.Print('  error |u-uexact|_inf = %.3e' % error_Linf)
+  #printerror(X,Xexact)
+
+FIXME more interesting surface and better visualization
+(e.g. with wireframe shown and raytrace to get shiny?)
+
+
+.. [Op2000] J. Oprea, *The Mathematics of Soap Films: Explorations with Maple*,
+   Student Mathematical Library 10, American Mathematical Society 2000.
 
 .. _Firedrake: https://www.firedrakeproject.org/
 .. _catenoid: https://en.wikipedia.org/wiki/Catenoid
