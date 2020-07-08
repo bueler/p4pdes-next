@@ -39,10 +39,10 @@ Extract a run-able code and run this way:
 
         (firedrake) $ python2 ../pylit/pylit.py surface.py.rst
         extract written to surface.py
-        (firedrake) $ python3 surface.py -s_snes_monitor
+        (firedrake) $ python3 surface.py
 
-It writes a file `Xsurface.pvd`.  View the result with Paraview and use
-Warp By Vector.
+It writes files `surfaceX.pvd` for `X`=1,2,3.  View the result with Paraview
+and use Warp By Vector.
 
 ### references
 
