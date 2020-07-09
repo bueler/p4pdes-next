@@ -21,7 +21,7 @@ have this simple formula for the area of a surface,
 
 .. math::
 
-  A(X) = \int_{\quad\Omega} \|X_s \times X_t\| \,\mathrm{d} s \mathrm{d} t
+  A[X] = \int_{\Omega} \|X_s \times X_t\| \,\mathrm{d} s \mathrm{d} t
 
 where :math:`X_s,X_t` denote partial derivatives of the vector-valued
 function :math:`X` and the norm :math:`\|\cdot\|` is the usual (Euclidean)
@@ -58,7 +58,7 @@ Suppose :math:`X` is a minimizer and suppose
 
 .. math::
 
-  A(\epsilon) = \int_{\quad\Omega} \|(X_s+\epsilon \Phi_s) \times (X_t+\epsilon \Phi_t)\| \,\mathrm{d} s \mathrm{d} t
+  A(\epsilon) = \int_{\Omega} \|(X_s+\epsilon \Phi_s) \times (X_t+\epsilon \Phi_t)\| \,\mathrm{d} s \mathrm{d} t
 
 Before proceeding observe that
 :math:`\|Y \times Z\| = \left[\left(Y\times Z\right)\cdot  \left(Y\times Z\right)\right]^{1/2}`.
@@ -73,7 +73,7 @@ be the unit normal tangent field on the surface.  Now compute:
 
 .. math::
 
-  \frac{dA}{d\epsilon}\bigg|_{\epsilon=0} &= \int_{\quad\Omega} \frac{1}{2 \|X_s \times X_t\|} \, \frac{d}{d\epsilon} \left[(X_s+\epsilon \Phi_s) \times (X_t+\epsilon \Phi_t) \cdot (X_s+\epsilon \Phi_s) \times (X_t+\epsilon \Phi_t)\right]_{\epsilon=0} \mathrm{d} s \mathrm{d} t \\
+  A'(0) &= \int_{\quad\Omega} \frac{1}{2 \|X_s \times X_t\|} \, \frac{d}{d\epsilon} \left[(X_s+\epsilon \Phi_s) \times (X_t+\epsilon \Phi_t) \cdot (X_s+\epsilon \Phi_s) \times (X_t+\epsilon \Phi_t)\right]_{\epsilon=0} \mathrm{d} s \mathrm{d} t \\
     &= \int_{\quad\Omega} \frac{1}{2 \|X_s \times X_t\|} \, 2 (X_s \times X_t) \cdot \frac{d}{d\epsilon} \left[(X_s+\epsilon \Phi_s) \times (X_t+\epsilon \Phi_t)\right]_{\epsilon=0} \mathrm{d} s \mathrm{d} t \\
     &= \int_{\quad\Omega} N(X) \cdot \left[X_s \times \Phi_t - X_t \times \Phi_s\right] \,\mathrm{d} s \mathrm{d} t
 
@@ -84,7 +84,7 @@ Thus we have a variational principle, codeable into Firedrake_:
 
 .. math::
 
-  0 = \int_{\quad\Omega} N(X) \cdot \left[X_s \times \Phi_t - X_t \times \Phi_s\right] \,\mathrm{d} s \mathrm{d} t
+  0 = \int_{\Omega} N(X) \cdot \left[X_s \times \Phi_t - X_t \times \Phi_s\right] \,\mathrm{d} s \mathrm{d} t
 
 for all :math:`\Phi` which are zero on the boundary.  As our first, easy
 problem we try to compute the catenoid_, a known minimal surface, on a unit
@@ -106,7 +106,7 @@ We define the weak form; note that cross and inner products make this easy. ::
 
   prod = cross(X.dx(0),X.dx(1))
   N = prod / sqrt(inner(prod,prod))
-  F = inner(N,cross(X.dx(0),Phi.dx(1)) - cross(X.dx(1),Phi.dx(0))) * dx
+  FA = inner(N,cross(X.dx(0),Phi.dx(1)) - cross(X.dx(1),Phi.dx(0))) * dx
 
 The boundary values come from the catenoid_ exact solution. ::
 
@@ -126,7 +126,7 @@ solve (for now). FIXME explain why adjust atol so it converges.  ::
             'snes_monitor': None,
             'snes_atol': 1.0}
   PETSc.Sys.Print('***** solver attempt 1 *****')
-  solve(F == 0, X, bcs = [bc,], options_prefix = 's',
+  solve(FA == 0, X, bcs = [bc,], options_prefix = 's',
         solver_parameters = params)
 
 We save the solution for viewing with Paraview_.  However, we have to modify
@@ -152,16 +152,36 @@ the same value
 Attempt 2: making the area functional coercive
 ----------------------------------------------
 
-FIXME just add a laplacian: isothermal coords always exist [Op2000_, theorem 3.4.1]
-and parameterizations of minimal surfaces (with zero mean curvature) are
-isothermal if and only iff they are harmonic [Op2000_, corollary 3.5.2]
+introduce the clearly coercive functional
 
-FIXME no longer need to cheat by setting nice initial or stopping iteration early ::
+.. math::
+
+  J[X] = \int_{\Omega} \frac{1}{2} \left(\|X_s\|^2 + \|X_t\|^2\right) \,\mathrm{d} s \mathrm{d} t
+
+FIXME the minimizers are harmonic functions, solutions to Laplace's
+equation :math:`X_{ss}+X_{tt}=0`, so define :math:`J(\epsilon) = J[X+\epsilon \Phi]` as before; the weak form is :math:`J'(0)=0`, i.e.
+
+.. math::
+
+  0 &= \int_{\Omega} X_s \cdot \Phi_s + X_t \cdot \Phi_t \,\mathrm{d} s \mathrm{d} t = \int_{\Omega} \nabla X : \nabla \Phi \,\mathrm{d} s \mathrm{d} t
+
+FIXME [Do1931_] shows
+
+.. math::
+
+  J(X) \ge A(X)
+
+for any parameterized surface, with equality if and only if :math:`\|X_s\|^2 = \|X_t\|^2` and :math:`X_s \cdot X_t = 0`
+
+FIXME this is called isothermal coords, which always locally exist [Op2000_, theorem 3.4.1]
+
+FIXME follows that parameterizations of minimal surfaces (with zero mean curvature) are isothermal if and only iff they are harmonic [Op2000_, corollary 3.5.2]
+
+FIXME (THIS IS REALLY WRONG) no longer need to cheat by setting nice initial or stopping iteration early ::
 
   X = Function(V)
   eps = 1.0
-  F = inner(N,cross(X.dx(0),Phi.dx(1)) - cross(X.dx(1),Phi.dx(0))) * dx \
-      + eps * inner(grad(X),grad(Phi)) * dx
+  F = FA + eps * inner(grad(X),grad(Phi)) * dx
   params.update({'snes_atol': 1.0e-50})
   PETSc.Sys.Print('***** solver attempt 2 *****')
   solve(F == 0, X, bcs = [bc,], options_prefix = 's',
@@ -193,10 +213,11 @@ zero in the functional ::
   bdry_ids = (1, 2, 3, 4)
   bc = DirichletBC(V, Xexact, bdry_ids)
   X = Xexact.copy(deepcopy=True)  # FIXME  INITIALIZING WITH SOLUTION!
+  #X = Function(V)
   prod = cross(X.dx(0),X.dx(1))
   N = prod / sqrt(inner(prod,prod))
-  F = inner(N,cross(X.dx(0),Phi.dx(1)) - cross(X.dx(1),Phi.dx(0))) * dx \
-      + eps * inner(grad(X),grad(Phi)) * dx
+  FA = inner(N,cross(X.dx(0),Phi.dx(1)) - cross(X.dx(1),Phi.dx(0))) * dx
+  F = FA + eps * inner(grad(X),grad(Phi)) * dx
   PETSc.Sys.Print('***** solver attempt 3 *****')
   solve(F == 0, X, bcs = [bc,], options_prefix = 's',
         solver_parameters = params)
@@ -225,6 +246,9 @@ TODO
 FIXME more interesting surface and better visualization
 (e.g. with wireframe shown and raytrace to get shiny?)
 
+
+.. [Do1931] J. Douglas (1931). *Solution of the problem of Plateau*.
+   Transactions of the American Mathematical Society, 33(1), 263-321.
 
 .. [Op2000] J. Oprea, *The Mathematics of Soap Films: Explorations with Maple*,
    Student Mathematical Library 10, American Mathematical Society 2000.
