@@ -1,8 +1,5 @@
 solving problem swater, a system of 2 equations,
-  on 7-point grid with dx=1.428571 and initial dt=0.100000...
-0 TS dt 0.1 time 0.
-1 TS dt 0.1 time 0.1
-2 TS dt 0.289348 time 0.2
-  ... completed 2 steps for 0.0000 <= t <= 0.2000
-  range of 0 component:  1.00010 <= h (water depth) <=  1.34316
-  range of 1 component: -0.03081 <= h u (depth * velocity) <=  0.03081
+  on 20-point grid with dx=0.500000 and initial dt=0.411693...
+  ... completed 8 steps for 0.0000 <= t <= 3.0000
+  range of 0 component:  0.54462 <= h (water depth) <=  1.50520
+  range of 1 component: -0.04223 <= h u (depth * velocity) <=  0.05846
