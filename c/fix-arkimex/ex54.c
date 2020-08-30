@@ -17,7 +17,7 @@ $ ./ex54 -snes_fd
 error norm at tf = 1.000000 from 33 steps:  |u-u_exact| =  9.29170e-02
 $ ./ex54 -ts_rtol 1.0e-14 -ts_atol 1.0e-14 -ts_bdf_order 6
 error norm at tf = 1.000000 from 388 steps:  |u-u_exact| =  4.23624e-11
-./ex54 -ts_type cn
+$ ./ex54 -ts_type cn
 error norm at tf = 1.000000 from 100 steps:  |u-u_exact| =  2.22839e-03
 $ ./ex54 -ts_type rosw
 error norm at tf = 1.000000 from 21 steps:  |u-u_exact| =  5.64012e-03
