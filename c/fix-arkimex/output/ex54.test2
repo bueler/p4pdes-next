@@ -1,1 +1,1 @@
-error norm at tf = 1.000000 from 16 steps:  |u-u_exact| =  1.93229e+01
+error norm at tf = 1.000000 from 24 steps:  |u-u_exact| =  4.53809e-02

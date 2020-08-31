@@ -1,33 +1,32 @@
 static char help[] =
-"Simple ODE system to test implicit and IMEX methods when both RHSFunction()\n"
-"and IFunction() are supplied, with Jacobians as well.  Problem has form\n"
+"Simple ODE system to test implicit and IMEX methods when *both* RHSFunction()\n"
+"and IFunction() are supplied.  Jacobians are supplied as well.  The problem\n"
+"has form\n"
 "   F(t,u,dudt) = G(t,u)\n"
-"where  u(t) = (x(t),y(t))  and x,y are scalar.  Functions F (IFunction) and\n"
-"G (RHSFunction) are actually linear, but this example uses TS_NONLINEAR type.\n"
-"In fact the system is\n"
-"   x' + y' = 6 y\n"
-"        y' = x\n"
-"with x(0)=1 and y(0)=3.  The exact solution is known; see end of main()\n"
-"for computation of numerical error.  Defaults to BDF TS type.\n\n";
-
-/* with BDF2, BDF2+-snes_fd, BDF6+tight tol., CN, ROSW:
-$ ./ex54
-error norm at tf = 1.000000 from 33 steps:  |u-u_exact| =  9.29170e-02
-$ ./ex54 -snes_fd
-error norm at tf = 1.000000 from 33 steps:  |u-u_exact| =  9.29170e-02
-$ ./ex54 -ts_rtol 1.0e-14 -ts_atol 1.0e-14 -ts_bdf_order 6
-error norm at tf = 1.000000 from 388 steps:  |u-u_exact| =  4.23624e-11
-$ ./ex54 -ts_type cn
-error norm at tf = 1.000000 from 100 steps:  |u-u_exact| =  2.22839e-03
-$ ./ex54 -ts_type rosw
-error norm at tf = 1.000000 from 21 steps:  |u-u_exact| =  5.64012e-03
-
-BROKEN with arkimex:
-$ ./ex54 -ts_type arkimex
-error norm at tf = 1.000000 from 16 steps:  |u-u_exact| =  1.93229e+01
-*/
+"where  u(t) = (x(t),y(t))  and dF/d(dudt) is invertible, so the problem is a\n"
+"2D ODE IVP.  Functions F (IFunction) and G (RHSFunction) are actually linear,\n"
+"but the ProblemType is set to TS_NONLINEAR type.  By default the system is\n"
+"   x' + y' +  x + 2y =  x + 8y\n"
+"        y' + 3x + 4y = 4x + 4y\n"
+"The implicit methods like BEULER, THETA, CN, BDF should be able to handle\n"
+"this system.  Apparently ROSW can also handle it.  However, ARKIMEX and EIMEX\n"
+"require dF/d(dudt) to be the identity.  (But consider option\n"
+"-ts_arkimex_fully_implicit.)  If option -identity_in_F is given then an\n"
+"equivalent system is formed,\n"
+"   x'      +  x + 2y = 8y\n"
+"        y' + 3x + 4y = 4x + 4y\n"
+"Both of these systems are trivial transformations of the system\n"
+"x'=6y-x, y'=x.  With the initial conditions chosen below, x(0)=1 and y(0)=3,\n"
+"the exact solution to the above systems is x(t) = -3 e^{-3t} + 4 e^{2t},\n"
+"y(t) = e^{-3t} + 2 e^{2t}, and we compute the final numerical error\n"
+"accordingly.  Default type is BDF.  See the manual pages for the various\n"
+"methods (e.g. TSROSW, TSARKIMEX, TSEIMEX, ...) for further information.\n\n";
 
 #include <petsc.h>
+
+typedef struct {
+  PetscBool  identity_in_F;
+} Ctx;
 
 extern PetscErrorCode FormIFunction(TS,PetscReal,Vec,Vec,Vec F,void*);
 extern PetscErrorCode FormIJacobian(TS,PetscReal,Vec,Vec,PetscReal,Mat,Mat,void*);
@@ -40,10 +39,18 @@ int main(int argc,char **argv)
   TS             ts;
   Vec            u, uexact;
   Mat            JF,JG;
+  Ctx            user;
   PetscReal      tf,xf,yf,errnorm;
   PetscInt       steps;
 
   PetscInitialize(&argc,&argv,(char*)0,help);
+
+  user.identity_in_F = PETSC_FALSE;
+  ierr = PetscOptionsBegin(PETSC_COMM_WORLD,"",
+           "Simple F(t,u,u')=G(t,u) ODE system.","TS"); CHKERRQ(ierr);
+  ierr = PetscOptionsBool("-identity_in_F","set up system so the dF/d(dudt) = I",
+           "ex54.c",user.identity_in_F,&(user.identity_in_F),NULL);CHKERRQ(ierr);
+  ierr = PetscOptionsEnd(); CHKERRQ(ierr);
 
   ierr = VecCreate(PETSC_COMM_WORLD,&u); CHKERRQ(ierr);
   ierr = VecSetSizes(u,PETSC_DECIDE,2); CHKERRQ(ierr);
@@ -56,12 +63,13 @@ int main(int argc,char **argv)
   ierr = MatDuplicate(JF,MAT_DO_NOT_COPY_VALUES,&JG); CHKERRQ(ierr);
 
   ierr = TSCreate(PETSC_COMM_WORLD,&ts); CHKERRQ(ierr);
+  ierr = TSSetApplicationContext(ts,&user); CHKERRQ(ierr);
 
-  ierr = TSSetIFunction(ts,NULL,FormIFunction,NULL); CHKERRQ(ierr);
-  ierr = TSSetIJacobian(ts,JF,JF,FormIJacobian,NULL); CHKERRQ(ierr);
+  ierr = TSSetIFunction(ts,NULL,FormIFunction,&user); CHKERRQ(ierr);
+  ierr = TSSetIJacobian(ts,JF,JF,FormIJacobian,&user); CHKERRQ(ierr);
 
-  ierr = TSSetRHSFunction(ts,NULL,FormRHSFunction,NULL); CHKERRQ(ierr);
-  ierr = TSSetRHSJacobian(ts,JG,JG,FormRHSJacobian,NULL); CHKERRQ(ierr);
+  ierr = TSSetRHSFunction(ts,NULL,FormRHSFunction,&user); CHKERRQ(ierr);
+  ierr = TSSetRHSJacobian(ts,JG,JG,FormRHSJacobian,&user); CHKERRQ(ierr);
 
   ierr = TSSetProblemType(ts,TS_NONLINEAR); CHKERRQ(ierr);
   ierr = TSSetType(ts,TSBDF); CHKERRQ(ierr);
@@ -102,16 +110,22 @@ int main(int argc,char **argv)
 
 
 PetscErrorCode FormIFunction(TS ts, PetscReal t, Vec u, Vec dudt,
-                             Vec F, void *ctx) {
+                             Vec F, void *user) {
     PetscErrorCode  ierr;
     const PetscReal *au, *adudt;
     PetscReal       *aF;
+    PetscBool       flag = ((Ctx*)user)->identity_in_F;
 
     ierr = VecGetArrayRead(u,&au); CHKERRQ(ierr);
     ierr = VecGetArrayRead(dudt,&adudt); CHKERRQ(ierr);
     ierr = VecGetArray(F,&aF);
-    aF[0] = adudt[0] + adudt[1];
-    aF[1] =            adudt[1];
+    if (flag) {
+        aF[0] = adudt[0] + au[0] + 2.0 * au[1];
+        aF[1] = adudt[1] + 3.0 * au[0] + 4.0 * au[1];
+    } else {
+        aF[0] = adudt[0] + adudt[1] + au[0] + 2.0 * au[1];
+        aF[1] = adudt[1] + 3.0 * au[0] + 4.0 * au[1];
+    }
     ierr = VecRestoreArrayRead(u,&au); CHKERRQ(ierr);
     ierr = VecRestoreArrayRead(dudt,&adudt); CHKERRQ(ierr);
     ierr = VecRestoreArray(F,&aF); CHKERRQ(ierr);
@@ -120,11 +134,19 @@ PetscErrorCode FormIFunction(TS ts, PetscReal t, Vec u, Vec dudt,
 
 // computes  J = dF/du + a dF/d(dudt)
 PetscErrorCode FormIJacobian(TS ts, PetscReal t, Vec u, Vec dudt,
-                             PetscReal a, Mat J, Mat P, void *ctx) {
+                             PetscReal a, Mat J, Mat P, void *user) {
     PetscErrorCode ierr;
     PetscInt       row[2] = {0, 1},  col[2] = {0, 1};
-    PetscReal      v[4] = { a,   a,
-                            0.0, a};
+    PetscReal      v[4];
+    PetscBool      flag = ((Ctx*)user)->identity_in_F;
+
+    if (flag) {
+        v[0] = a + 1.0;    v[1] = 2.0;
+        v[2] = 3.0;        v[3] = a + 4.0;
+    } else {
+        v[0] = a + 1.0;    v[1] = a + 2.0;
+        v[2] = 3.0;        v[3] = a + 4.0;
+    }
     ierr = MatSetValues(P,2,row,2,col,v,INSERT_VALUES); CHKERRQ(ierr);
     ierr = MatAssemblyBegin(P,MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
     ierr = MatAssemblyEnd(P,MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
@@ -136,26 +158,40 @@ PetscErrorCode FormIJacobian(TS ts, PetscReal t, Vec u, Vec dudt,
 }
 
 PetscErrorCode FormRHSFunction(TS ts, PetscReal t, Vec u,
-                               Vec G, void *ctx) {
+                               Vec G, void *user) {
     PetscErrorCode  ierr;
     const PetscReal *au;
     PetscReal       *aG;
+    PetscBool       flag = ((Ctx*)user)->identity_in_F;
 
     ierr = VecGetArrayRead(u,&au); CHKERRQ(ierr);
     ierr = VecGetArray(G,&aG); CHKERRQ(ierr);
-    aG[0] = 6.0 * au[1];
-    aG[1] = au[0];
+    if (flag) {
+        aG[0] = 8.0 * au[1];
+        aG[1] = 4.0 * au[0] + 4.0 * au[1];
+    } else {
+        aG[0] = au[0] + 8.0 * au[1];
+        aG[1] = 4.0 * au[0] + 4.0 * au[1];
+    }
     ierr = VecRestoreArrayRead(u,&au); CHKERRQ(ierr);
     ierr = VecRestoreArray(G,&aG); CHKERRQ(ierr);
     return 0;
 }
 
 PetscErrorCode FormRHSJacobian(TS ts, PetscReal t, Vec u, Mat J, Mat P,
-                               void *ctx) {
+                               void *user) {
     PetscErrorCode ierr;
     PetscInt       row[2] = {0, 1},  col[2] = {0, 1};
-    PetscReal      v[4] = { 0.0, 6.0,
-                            1.0, 0.0};
+    PetscReal      v[4];
+    PetscBool      flag = ((Ctx*)user)->identity_in_F;
+
+    if (flag) {
+        v[0] = 0.0;    v[1] = 8.0;
+        v[2] = 4.0;    v[3] = 4.0;
+    } else {
+        v[0] = 1.0;    v[1] = 8.0;
+        v[2] = 4.0;    v[3] = 4.0;
+    }
     ierr = MatSetValues(P,2,row,2,col,v,INSERT_VALUES); CHKERRQ(ierr);
     ierr = MatAssemblyBegin(P,MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
     ierr = MatAssemblyEnd(P,MAT_FINAL_ASSEMBLY); CHKERRQ(ierr);
