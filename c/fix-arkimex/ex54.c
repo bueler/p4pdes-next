@@ -72,6 +72,8 @@ int main(int argc,char **argv)
   ierr = TSSetRHSJacobian(ts,JG,JG,FormRHSJacobian,&user); CHKERRQ(ierr);
 
   ierr = TSSetProblemType(ts,TS_NONLINEAR); CHKERRQ(ierr);
+  // helps with ARKIMEX if you also set -ts_arkimex_fully_implicit:
+  // ierr = TSSetEquationType(ts,TS_EQ_IMPLICIT); CHKERRQ(ierr);
   ierr = TSSetType(ts,TSBDF); CHKERRQ(ierr);
   ierr = TSSetTime(ts,0.0); CHKERRQ(ierr);
   ierr = TSSetMaxTime(ts,1.0); CHKERRQ(ierr);
