@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# from section 3.2 and 3.3.1 of Gibson et al 2019
+# from section 3.2 and 3.3 of Gibson et al 2019
 
 from firedrake import *
 
@@ -48,5 +48,20 @@ File("unitsquare.pvd").write(uH1,uL2,uHcurl,uHdiv)
 
 # unit cube as extruded unit square, including H(curl) and H(div) spaces
 
+#N = 10
+N = 5
+base_mesh = UnitSquareMesh(N, N)
+mesh = ExtrudedMesh(base_mesh, layers=N, layer_height=1.0/N)
+P2t = FiniteElement("CG", triangle, 2)
+P2i = FiniteElement("CG", interval, 2)
+H1_element = TensorProductElement(P2t, P2i)
+H1 = FunctionSpace(mesh, H1_element)
+dP1t = FiniteElement("DG", triangle, 1)
+dP1i = FiniteElement("DG", interval, 1)
+L2_element = TensorProductElement(dP1t, dP1i)
+L2 = FunctionSpace(mesh, L2_element)
+N2_1 = FiniteElement("N2curl", triangle, 1)
+Hcurl_h = HCurl(TensorProductElement(N2_1, P2i))
+Hcurl_v = HCurl(TensorProductElement(P2t,dP1i))
 # FIXME
 
