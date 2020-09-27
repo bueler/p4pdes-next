@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# from section 3.2 and 3.3 of Gibson et al 2019
+# from section 3.2 and 3.3 of Gibson et al 2019: construction of extruded meshes
 
 from firedrake import *
 
@@ -63,5 +63,6 @@ L2 = FunctionSpace(mesh, L2_element)
 N2_1 = FiniteElement("N2curl", triangle, 1)
 Hcurl_h = HCurl(TensorProductElement(N2_1, P2i))
 Hcurl_v = HCurl(TensorProductElement(P2t,dP1i))
+
 # FIXME
 

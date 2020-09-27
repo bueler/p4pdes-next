@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# from section 3.1 of Gibson et al 2019
+# from section 3.1 of Gibson et al 2019: mixed Poisson solution from RT1 x DG0
 
 # regarding solvers, the defaults (based on MATNEST) correspond to:
 #   ./mixedpoisson.py -s_ksp_converged_reason -s_ksp_type gmres -s_pc_type jacobi
