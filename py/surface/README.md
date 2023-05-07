@@ -15,7 +15,7 @@ Get help with these forms:
 
 To see a high-accuracy example using a full nonlinear multigrid cycle, i.e. grid-sequenced Newton-multigrid, using Q_2 elements, do something like
 
-        (firedrake) $ ./minimal.py -k 2 -sequence 8 -s_pc_type mg
+        (firedrake) $ ./minimal.py -k 2 -sequence 8 -s_pc_type mg -s_snes_linesearch_type bt  # FIXME document linesearch?
 
 The finest grid here is 513x513 and 10 digit accuracy is achieved at all nodes.
 

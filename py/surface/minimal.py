@@ -1,3 +1,5 @@
+#FIXME -s_snes_linesearch_type bt
+
 #!/usr/bin/env python3
 
 from argparse import ArgumentParser, RawTextHelpFormatter
