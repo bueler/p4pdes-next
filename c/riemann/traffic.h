@@ -90,7 +90,7 @@ static PetscErrorCode traffic_bdryflux_a_outflow(PetscReal t, PetscReal hx, Pets
     if (s <= 0.0)
         F[0] = traffic_umax * qr[0] * (1.0 - qr[0]);
     else {
-        SETERRQ1(PETSC_COMM_SELF,1,
+        SETERRQ(PETSC_COMM_SELF,1,
                  "assumption of outflow s <= 0.0 fails at (t=%g,a)\n",t);
     }
     return 0;
@@ -106,7 +106,7 @@ static PetscErrorCode traffic_bdryflux_b_outflow(PetscReal t, PetscReal hx, Pets
     if (s >= 0.0)
         F[0] = traffic_umax * ql[0] * (1.0 - ql[0]);
     else {
-        SETERRQ1(PETSC_COMM_SELF,1,
+        SETERRQ(PETSC_COMM_SELF,1,
                  "assumption of outflow s >= 0 fails at (t=%g,b)\n",t);
     }
     return 0;
@@ -130,22 +130,21 @@ static const char* TRInitialTypes[] = {"bulge","redlight","greenlight",
                                        "TRInitialType", "", NULL};
 
 PetscErrorCode  TrafficInitializer(ProblemCtx *user) {
-    PetscErrorCode  ierr;
     TRInitialType   initial = TR_BULGE;
 
     if (user == NULL) {
         SETERRQ(PETSC_COMM_SELF,1,"ProblemCtx *user is NULL\n");
     }
 
-    ierr = PetscOptionsBegin(PETSC_COMM_WORLD,"",
-               "options for traffic flow solver (riemann -problem traffic)",""); CHKERRQ(ierr);
-    ierr = PetscOptionsEnum("-initial", "traffic flow initial condition",
+    PetscOptionsBegin(PETSC_COMM_WORLD,"",
+               "options for traffic flow solver (riemann -problem traffic)","");
+    PetscCall(PetscOptionsEnum("-initial", "traffic flow initial condition",
                "traffic.h",TRInitialTypes,(PetscEnum)(initial),(PetscEnum*)&initial,
-               NULL); CHKERRQ(ierr);
-    ierr = PetscOptionsEnd(); CHKERRQ(ierr);
+               NULL));
+    PetscOptionsEnd();
 
     user->n_dim = 1;
-    ierr = PetscMalloc1(1,&(user->field_names)); CHKERRQ(ierr);
+    PetscCall(PetscMalloc1(1,&(user->field_names)));
     (user->field_names)[0] = (char*)traffic_uname;
     user->t0_default = 0.0;
     user->periodic_bcs = PETSC_FALSE;

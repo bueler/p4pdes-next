@@ -51,4 +51,3 @@ static ProblemInitializer* InitializerPtrs[] = {&AcousticInitializer,
 /* end BLOCK */
 
 #endif
-

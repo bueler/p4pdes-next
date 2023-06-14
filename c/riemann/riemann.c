@@ -73,7 +73,6 @@ extern PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo*, PetscReal,
         PetscReal*, PetscReal*, void*);
 
 int main(int argc,char **argv) {
-    PetscErrorCode   ierr;
     TS               ts;                 // ODE solver for method-of-lines (MOL)
     DM               da;                 // structured grid
     Vec              q;                  // the solution
@@ -84,140 +83,139 @@ int main(int argc,char **argv) {
     PetscBool        flg;
     PetscReal        hx, qmin, qmax, t0, tf, dt, c;
 
-    PetscInitialize(&argc,&argv,(char*)0,help);
+    PetscCall(PetscInitialize(&argc,&argv,(char*)0,help));
 
     // get which problem we are solving
     // (ProblemType, ProblemTypes, InitializerPtrs are defined in cases.h)
-    ierr = PetscOptionsBegin(PETSC_COMM_WORLD,"",
-               "riemann (hyperbolic system solver) options",""); CHKERRQ(ierr);
-    ierr = PetscOptionsEnum("-problem", "problem type",
+    PetscOptionsBegin(PETSC_COMM_WORLD,"",
+               "riemann (hyperbolic system solver) options","");
+    PetscCall(PetscOptionsEnum("-problem", "problem type",
                "riemann.c",ProblemTypes,(PetscEnum)(problem),(PetscEnum*)&problem,
-               NULL); CHKERRQ(ierr);
-    ierr = PetscOptionsEnum("-limiter", "limiter type",
+               NULL));
+    PetscCall(PetscOptionsEnum("-limiter", "limiter type",
                "riemann.c",LimiterTypes,(PetscEnum)(limiter),(PetscEnum*)&limiter,
-               NULL); CHKERRQ(ierr);
-    ierr = PetscOptionsEnd(); CHKERRQ(ierr);
+               NULL));
+    PetscOptionsEnd();
 
     // call the initializer for the given case
     // (it allocates list of strings in user->field_names thus PetscFree below)
-    ierr = (*InitializerPtrs[problem])(&user); CHKERRQ(ierr);
+    PetscCall((*InitializerPtrs[problem])(&user));
 
     // create grid
     swidth = (limiter == NONE) ? 1 : 2;
-    ierr = DMDACreate1d(PETSC_COMM_WORLD,
+    PetscCall(DMDACreate1d(PETSC_COMM_WORLD,
                         user.periodic_bcs ? DM_BOUNDARY_PERIODIC : DM_BOUNDARY_NONE,
                         4,          // default resolution
                         user.n_dim, // system dimension (d.o.f.)
                         swidth,     // stencil (half) width
-                        NULL,&da); CHKERRQ(ierr);
-    ierr = DMSetFromOptions(da); CHKERRQ(ierr);
-    ierr = DMSetUp(da); CHKERRQ(ierr);
-    ierr = DMSetApplicationContext(da,&user); CHKERRQ(ierr);
-    ierr = DMDAGetLocalInfo(da,&info); CHKERRQ(ierr);
+                        NULL,&da));
+    PetscCall(DMSetFromOptions(da));
+    PetscCall(DMSetUp(da));
+    PetscCall(DMSetApplicationContext(da,&user));
+    PetscCall(DMDAGetLocalInfo(da,&info));
     hx = (user.b_right - user.a_left) / info.mx;
-    ierr = DMDASetUniformCoordinates(da,user.a_left+hx/2.0,user.b_right-hx/2.0,
-                                     0.0,1.0,0.0,1.0); CHKERRQ(ierr);
+    PetscCall(DMDASetUniformCoordinates(da,user.a_left+hx/2.0,user.b_right-hx/2.0,
+                                     0.0,1.0,0.0,1.0));
 
     // set field names so that visualization makes sense
     for (k = 0; k < info.dof; k++) {
-        ierr = DMDASetFieldName(da,k,(user.field_names)[k]); CHKERRQ(ierr);
+        PetscCall(DMDASetFieldName(da,k,(user.field_names)[k]));
     }
 
     // create TS:  dq/dt = G(t,q)  form
-    ierr = TSCreate(PETSC_COMM_WORLD,&ts); CHKERRQ(ierr);
-    ierr = TSSetProblemType(ts,TS_NONLINEAR); CHKERRQ(ierr);
-    ierr = TSSetDM(ts,da); CHKERRQ(ierr);
-    ierr = DMDATSSetRHSFunctionLocal(da,INSERT_VALUES,
-           (DMDATSRHSFunctionLocal)FormRHSFunctionLocal,&user); CHKERRQ(ierr);
-    ierr = TSSetType(ts,TSRK); CHKERRQ(ierr);  // defaults to -ts_rk_type 3bs
+    PetscCall(TSCreate(PETSC_COMM_WORLD,&ts));
+    PetscCall(TSSetProblemType(ts,TS_NONLINEAR));
+    PetscCall(TSSetDM(ts,da));
+    PetscCall(DMDATSSetRHSFunctionLocal(da,INSERT_VALUES,
+           (DMDATSRHSFunctionLocal)FormRHSFunctionLocal,&user));
+    PetscCall(TSSetType(ts,TSRK));  // defaults to -ts_rk_type 3bs
 
     // set up time axis
-    ierr = TSSetTime(ts,user.t0_default); CHKERRQ(ierr);
-    ierr = TSSetMaxTime(ts,user.tf_default); CHKERRQ(ierr);
+    PetscCall(TSSetTime(ts,user.t0_default));
+    PetscCall(TSSetMaxTime(ts,user.tf_default));
     dt = user.tf_default - user.t0_default;
-    ierr = TSSetTimeStep(ts,dt); CHKERRQ(ierr);  // usually reset below
-    ierr = TSSetExactFinalTime(ts,TS_EXACTFINALTIME_MATCHSTEP); CHKERRQ(ierr);
-    ierr = TSSetFromOptions(ts); CHKERRQ(ierr);
+    PetscCall(TSSetTimeStep(ts,dt));  // usually reset below
+    PetscCall(TSSetExactFinalTime(ts,TS_EXACTFINALTIME_MATCHSTEP));
+    PetscCall(TSSetFromOptions(ts));
 
     // get initial values
-    ierr = DMCreateGlobalVector(da,&q); CHKERRQ(ierr);
-    ierr = TSGetTime(ts,&t0); CHKERRQ(ierr);
-    ierr = FormInitial(&info,q,t0,&user); CHKERRQ(ierr);
-    //ierr = VecView(q,PETSC_VIEWER_STDOUT_WORLD); CHKERRQ(ierr);
+    PetscCall(DMCreateGlobalVector(da,&q));
+    PetscCall(TSGetTime(ts,&t0));
+    PetscCall(FormInitial(&info,q,t0,&user));
+    //PetscCall(VecView(q,PETSC_VIEWER_STDOUT_WORLD));
 
     // use CFL to reset initial time-step dt (unless user sets)
-    ierr = PetscOptionsHasName(NULL,NULL,"-ts_dt",&flg); CHKERRQ(ierr);
-    ierr = GetMaxSpeed(&info,q,t0,&c,&user); CHKERRQ(ierr);
+    PetscCall(PetscOptionsHasName(NULL,NULL,"-ts_dt",&flg));
+    PetscCall(GetMaxSpeed(&info,q,t0,&c,&user));
     if (!flg && c > 0.0) {
-        ierr = TSGetMaxTime(ts,&tf); CHKERRQ(ierr);
+        PetscCall(TSGetMaxTime(ts,&tf));
         dt = PetscMin(hx / c, tf-t0);
-        ierr = TSSetTimeStep(ts,dt); CHKERRQ(ierr);
+        PetscCall(TSSetTimeStep(ts,dt));
     } else {
-        ierr = TSGetTimeStep(ts,&dt); CHKERRQ(ierr);
+        PetscCall(TSGetTimeStep(ts,&dt));
     }
 
     // solve
-    ierr = PetscPrintf(PETSC_COMM_WORLD,
+    PetscCall(PetscPrintf(PETSC_COMM_WORLD,
                "solving problem %s, a system of %d equations,\n"
                "  on %d-point grid with dx=%.6f and initial dt=%.6f...\n",
-               ProblemTypes[problem],info.dof,info.mx,hx,dt); CHKERRQ(ierr);
-    ierr = TSSolve(ts,q); CHKERRQ(ierr);
+               ProblemTypes[problem],info.dof,info.mx,hx,dt));
+    PetscCall(TSSolve(ts,q));
 
     // report on solution
-    ierr = TSGetStepNumber(ts,&steps); CHKERRQ(ierr);
-    ierr = TSGetTime(ts,&tf); CHKERRQ(ierr);
-    ierr = PetscPrintf(PETSC_COMM_WORLD,
+    PetscCall(TSGetStepNumber(ts,&steps));
+    PetscCall(TSGetTime(ts,&tf));
+    PetscCall(PetscPrintf(PETSC_COMM_WORLD,
                "  ... completed %d steps for %.4f <= t <= %.4f\n",
-               steps,t0,tf); CHKERRQ(ierr);
+               steps,t0,tf));
     for (k = 0; k < info.dof; k++) {
-        ierr = VecStrideMin(q,k,NULL,&qmin); CHKERRQ(ierr);
-        ierr = VecStrideMax(q,k,NULL,&qmax); CHKERRQ(ierr);
-        ierr = PetscPrintf(PETSC_COMM_WORLD,
+        PetscCall(VecStrideMin(q,k,NULL,&qmin));
+        PetscCall(VecStrideMax(q,k,NULL,&qmax));
+        PetscCall(PetscPrintf(PETSC_COMM_WORLD,
                "  range of %d component: %8.5f <= %s <= %8.5f\n",
-               k,qmin,(user.field_names)[k],qmax); CHKERRQ(ierr);
+               k,qmin,(user.field_names)[k],qmax));
     }
 
     // free memory
     VecDestroy(&q);  TSDestroy(&ts);  DMDestroy(&da);
-    ierr = PetscFree(user.field_names); CHKERRQ(ierr);
-    return PetscFinalize();
+    PetscCall(PetscFree(user.field_names));
+    PetscCall(PetscFinalize());
+    return 0;
 }
 
 
 PetscErrorCode FormInitial(DMDALocalInfo *info, Vec q, PetscReal t0, ProblemCtx *user) {
-    PetscErrorCode   ierr;
     const PetscReal  hx = (user->b_right - user->a_left) / info->mx;
     PetscInt         j;
     PetscReal        x, *aq;
 
-    ierr = DMDAVecGetArray(info->da, q, &aq); CHKERRQ(ierr);
+    PetscCall(DMDAVecGetArray(info->da, q, &aq));
     for (j=info->xs; j<info->xs+info->xm; j++) {
         x = user->a_left + (j+0.5) * hx;
-        ierr = user->f_initial(t0,x,&aq[(info->dof)*j]); CHKERRQ(ierr);
+        PetscCall(user->f_initial(t0,x,&aq[(info->dof)*j]));
     }
-    ierr = DMDAVecRestoreArray(info->da, q, &aq); CHKERRQ(ierr);
+    PetscCall(DMDAVecRestoreArray(info->da, q, &aq));
     return 0;
 }
 
 
 PetscErrorCode GetMaxSpeed(DMDALocalInfo *info, Vec q, PetscReal t,
                            PetscReal *maxspeed, ProblemCtx *user) {
-    PetscErrorCode   ierr;
     const PetscReal  hx = (user->b_right - user->a_left) / info->mx;
     PetscInt         j;
     PetscReal        x, cj, locmax, *aq;
     MPI_Comm         comm;
 
-    ierr = DMDAVecGetArray(info->da, q, &aq); CHKERRQ(ierr);
+    PetscCall(DMDAVecGetArray(info->da, q, &aq));
     locmax = 0.0;
     for (j=info->xs; j<info->xs+info->xm; j++) {
         x = user->a_left + (j+0.5) * hx;
-        ierr = user->maxspeed(t,x,&aq[(info->dof)*j],&cj); CHKERRQ(ierr);
+        PetscCall(user->maxspeed(t,x,&aq[(info->dof)*j],&cj));
         locmax = PetscMax(locmax,cj);
     }
-    ierr = DMDAVecRestoreArray(info->da, q, &aq); CHKERRQ(ierr);
-    ierr = PetscObjectGetComm((PetscObject)info->da,&comm); CHKERRQ(ierr);
-    ierr = MPI_Allreduce(&locmax,maxspeed,1,MPIU_REAL,MPIU_MAX,comm); CHKERRQ(ierr);
+    PetscCall(DMDAVecRestoreArray(info->da, q, &aq));
+    PetscCall(PetscObjectGetComm((PetscObject)info->da,&comm));
+    PetscCall(MPI_Allreduce(&locmax,maxspeed,1,MPIU_REAL,MPIU_MAX,comm));
     return 0;
 }
 
@@ -240,7 +238,6 @@ static inline void slopemodify(PetscInt n, PetscReal C,
 // Gudonov (i.e. Riemann-solver upwind) method with a slope limiter.
 PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
         PetscReal *aq, PetscReal *aG, void *ctx) {
-    PetscErrorCode   ierr;
     ProblemCtx       *user = (ProblemCtx*)ctx;
     const PetscInt   n = info->dof;
     const PetscReal  hx = (user->b_right - user->a_left) / info->mx;
@@ -252,9 +249,9 @@ PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
                      *Fl, *Fr;  // face fluxes on either end of current cell
 
     // for each owned cell get slope using the slope-limiter
-    ierr = DMCreateLocalVector(info->da,&sig); CHKERRQ(ierr);
-    ierr = VecSet(sig,0.0); CHKERRQ(ierr);  // implements limiter == NONE
-    ierr = DMDAVecGetArray(info->da,sig,&asig); CHKERRQ(ierr);
+    PetscCall(DMCreateLocalVector(info->da,&sig));
+    PetscCall(VecSet(sig,0.0));  // implements limiter == NONE
+    PetscCall(DMDAVecGetArray(info->da,sig,&asig));
     if (limiter != NONE) {  // following block assumes swidth >= 2
         for (j = info->xs-1; j < info->xs + info->xm+1; j++) {   // x_j is cell center
             for (k = 0; k < n; k++) {
@@ -284,34 +281,34 @@ PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
     }
 
     // get left-face flux Fl for first cell owned by process; may be at x=a
-    ierr = PetscMalloc4(n,&Ql,n,&Qr,n,&Fl,n,&Fr); CHKERRQ(ierr);
+    PetscCall(PetscMalloc4(n,&Ql,n,&Qr,n,&Fl,n,&Fr));
     if (info->xs == 0 && user->periodic_bcs == PETSC_FALSE) {
         // use right slope
         slopemodify(n,-hx/2.0,&asig[0],&aq[0],Qr);
-        ierr = user->bdryflux_a(t,hx,Qr,Fl); CHKERRQ(ierr);
+        PetscCall(user->bdryflux_a(t,hx,Qr,Fl));
     } else {
         // use left and right (limited) slope [left is owned by other process]
         x = user->a_left + (info->xs+0.5) * hx;
         slopemodify(n,hx/2.0,&asig[n*(info->xs-1)],&aq[n*(info->xs-1)],Ql);
         slopemodify(n,-hx/2.0,&asig[n*(info->xs)],&aq[n*(info->xs)],Qr);
-        ierr = user->faceflux(t,x-hx/2.0,Ql,Qr,Fl); CHKERRQ(ierr);
+        PetscCall(user->faceflux(t,x-hx/2.0,Ql,Qr,Fl));
     }
 
     // for each owned cell, compute RHS  G(t,x,q)
     for (j = info->xs; j < info->xs + info->xm; j++) {   // x_j is cell center
         x = user->a_left + (j+0.5) * hx;
         // set aG[n j + k] = g(t,x_j,u)_k
-        ierr = user->g_source(t,x,&aq[n*j],&aG[n*j]); CHKERRQ(ierr);
+        PetscCall(user->g_source(t,x,&aq[n*j],&aG[n*j]));
         // get right-face flux Fr for cell; may be at x=b
         if (j == info->mx-1 && user->periodic_bcs == PETSC_FALSE) {
             // user left slope
             slopemodify(n,hx/2.0,&asig[n*j],&aq[n*j],Ql);
-            ierr = user->bdryflux_b(t,hx,Ql,Fr); CHKERRQ(ierr);
+            PetscCall(user->bdryflux_b(t,hx,Ql,Fr));
         } else {
             // use left and right (limited) slope; see formulas LeVeque page 193
             slopemodify(n,hx/2.0,&asig[n*j],&aq[n*j],Ql);
             slopemodify(n,-hx/2.0,&asig[n*(j+1)],&aq[n*(j+1)],Qr);
-            ierr = user->faceflux(t,x+hx/2.0,Ql,Qr,Fr); CHKERRQ(ierr);
+            PetscCall(user->faceflux(t,x+hx/2.0,Ql,Qr,Fr));
         }
         // complete the RHS:
         //   aG[n j + k] = g(t,x_j,u)_k + (F_{j-1/2}_k - F_{j+1/2}_k) / hx
@@ -321,9 +318,9 @@ PetscErrorCode FormRHSFunctionLocal(DMDALocalInfo *info, PetscReal t,
     }
 
     // clean up
-    ierr = PetscFree4(Ql,Qr,Fl,Fr); CHKERRQ(ierr);
-    ierr = DMDAVecRestoreArray(info->da,sig,&asig); CHKERRQ(ierr);
-    ierr = VecDestroy(&sig); CHKERRQ(ierr);
+    PetscCall(PetscFree4(Ql,Qr,Fl,Fr));
+    PetscCall(DMDAVecRestoreArray(info->da,sig,&asig));
+    PetscCall(VecDestroy(&sig));
     return 0;
 }
 

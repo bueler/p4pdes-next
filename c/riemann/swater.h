@@ -122,12 +122,12 @@ static PetscErrorCode swater_faceflux(PetscReal t, PetscReal x,
        PetscReal *ql, PetscReal *qr, PetscReal *F) {
     // assert h > 0 on both sides
     if (ql[0] <= 0.0) {
-        SETERRQ3(PETSC_COMM_SELF,1,
+        SETERRQ(PETSC_COMM_SELF,1,
                  "h = ql[0] = %g is nonpositive at (t,x) = (%g,%g)\n",
                  ql[0],t,x);
     }
     if (qr[0] <= 0.0) {
-        SETERRQ3(PETSC_COMM_SELF,2,
+        SETERRQ(PETSC_COMM_SELF,2,
                  "h = qr[0] = %g is nonpositive at (t,x) = (%g,%g)\n",
                  qr[0],t,x);
     }
@@ -170,41 +170,39 @@ static PetscErrorCode swater_faceflux(PetscReal t, PetscReal x,
 //     conditions.
 // With bathymetry we modify the ghost [Q_{-1}] value by the bathymetry.
 static PetscErrorCode swater_bdryflux_a(PetscReal t, PetscReal hx, PetscReal *qr, PetscReal *F) {
-    PetscErrorCode ierr;
     PetscReal      QL[2];
     if (qr[0] <= 0.0) {
-        SETERRQ2(PETSC_COMM_SELF,1,
+        SETERRQ(PETSC_COMM_SELF,1,
                  "h = qr[0] = %g is nonpositive at (t=%g,a)\n",
                  qr[0],t);
     }
     QL[0] = qr[0] + swater_bx * hx;
     if (QL[0] <= 0.0) {
-        SETERRQ2(PETSC_COMM_SELF,2,
+        SETERRQ(PETSC_COMM_SELF,2,
                  "ghost value h = q[-1] = %g is nonpositive at (t=%g,a)\n",
                  QL[0],t);
     }
     QL[1] = qr[1];
-    ierr = swater_faceflux(t,-5.0,QL,qr,F); CHKERRQ(ierr);
+    PetscCall(swater_faceflux(t,-5.0,QL,qr,F));
     return 0;
 }
 
 // Nonreflecting boundary condition at x=b.  See comment for previous.
 static PetscErrorCode swater_bdryflux_b(PetscReal t, PetscReal hx, PetscReal *ql, PetscReal *F) {
-    PetscErrorCode ierr;
     PetscReal      QR[2];
     if (ql[0] <= 0.0) {
-        SETERRQ2(PETSC_COMM_SELF,1,
+        SETERRQ(PETSC_COMM_SELF,1,
                  "h = qr[0] = %g is nonpositive at (t=%g,b)\n",
                  ql[0],t);
     }
     QR[0] = ql[0] - swater_bx * hx;
     if (QR[0] <= 0.0) {
-        SETERRQ2(PETSC_COMM_SELF,2,
+        SETERRQ(PETSC_COMM_SELF,2,
                  "ghost value h = q[mx] = %g is nonpositive at (t=%g,b)\n",
                  QR[0],t);
     }
     QR[1] = ql[1];
-    ierr = swater_faceflux(t,5.0,ql,QR,F); CHKERRQ(ierr);
+    PetscCall(swater_faceflux(t,5.0,ql,QR,F));
     return 0;
 }
 
@@ -213,7 +211,7 @@ static PetscErrorCode swater_maxspeed(PetscReal t, PetscReal x, PetscReal *q,
                                       PetscReal *speed) {
     PetscReal delta;
     if (q[0] <= 0.0) {
-        SETERRQ3(PETSC_COMM_SELF,1,
+        SETERRQ(PETSC_COMM_SELF,1,
                  "h = q[0] = %g is nonpositive at (t=%g,x=%g)\n",
                  q[0],t,x);
     }
@@ -228,26 +226,25 @@ static const char* SWInitialTypes[] = {"flat","hump","dam",
                                        "SWInitialType", "", NULL};
 
 PetscErrorCode  SWaterInitializer(ProblemCtx *user) {
-    PetscErrorCode  ierr;
     SWInitialType   initial = SW_HUMP;
 
     if (user == NULL) {
         SETERRQ(PETSC_COMM_SELF,1,"ProblemCtx *user is NULL\n");
     }
 
-    ierr = PetscOptionsBegin(PETSC_COMM_WORLD,"",
-               "options for shallow water solver (riemann -problem swater)",""); CHKERRQ(ierr);
-    ierr = PetscOptionsEnum("-initial", "shallow water initial condition",
+    PetscOptionsBegin(PETSC_COMM_WORLD,"",
+               "options for shallow water solver (riemann -problem swater)","");
+    PetscCall(PetscOptionsEnum("-initial", "shallow water initial condition",
                "swater.h",SWInitialTypes,(PetscEnum)(initial),(PetscEnum*)&initial,
-               NULL); CHKERRQ(ierr);
-    ierr = PetscOptionsReal("-b0", "bathymetry elevation at x=0",
-               "swater.h",swater_b0,&swater_b0,NULL); CHKERRQ(ierr);
-    ierr = PetscOptionsReal("-bx", "bathymetry slope",
-               "swater.h",swater_bx,&swater_bx,NULL); CHKERRQ(ierr);
-    ierr = PetscOptionsEnd(); CHKERRQ(ierr);
+               NULL));
+    PetscCall(PetscOptionsReal("-b0", "bathymetry elevation at x=0",
+               "swater.h",swater_b0,&swater_b0,NULL));
+    PetscCall(PetscOptionsReal("-bx", "bathymetry slope",
+               "swater.h",swater_bx,&swater_bx,NULL));
+    PetscOptionsEnd();
 
     user->n_dim = 2;
-    ierr = PetscMalloc1(2,&(user->field_names)); CHKERRQ(ierr);
+    PetscCall(PetscMalloc1(2,&(user->field_names)));
     (user->field_names)[0] = (char*)swater_hname;
     (user->field_names)[1] = (char*)swater_huname;
     user->a_left = -5.0;

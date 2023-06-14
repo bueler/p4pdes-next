@@ -55,20 +55,18 @@ static PetscErrorCode advection_maxspeed(PetscReal t, PetscReal x, PetscReal *q,
 }
 
 PetscErrorCode  AdvectionInitializer(ProblemCtx *user) {
-    PetscErrorCode  ierr;
-
     if (user == NULL) {
         SETERRQ(PETSC_COMM_SELF,1,"ProblemCtx *user is NULL\n");
     }
 
-    ierr = PetscOptionsBegin(PETSC_COMM_WORLD,"",
-               "options for advection solver (riemann -problem advection)",""); CHKERRQ(ierr);
-    ierr = PetscOptionsReal("-a", "constant transport velocity",
-               "advection.h",advection_a,&advection_a,NULL); CHKERRQ(ierr);
-    ierr = PetscOptionsEnd(); CHKERRQ(ierr);
+    PetscOptionsBegin(PETSC_COMM_WORLD,"",
+               "options for advection solver (riemann -problem advection)","");
+    PetscCall(PetscOptionsReal("-a", "constant transport velocity",
+               "advection.h",advection_a,&advection_a,NULL));
+    PetscOptionsEnd();
 
     user->n_dim = 1;
-    ierr = PetscMalloc1(1,&(user->field_names)); CHKERRQ(ierr);
+    PetscCall(PetscMalloc1(1,&(user->field_names)));
     (user->field_names)[0] = (char*)advection_uname;
     user->a_left = 0.0;
     user->b_right = 1.0;

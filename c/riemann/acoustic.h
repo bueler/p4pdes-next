@@ -113,22 +113,21 @@ static const char* AcousticInitialTypes[] = {"leveque","stump",
                                              "AcousticInitialType", "", NULL};
 
 PetscErrorCode  AcousticInitializer(ProblemCtx *user) {
-    PetscErrorCode       ierr;
     AcousticInitialType  initial = AC_LEVEQUE;
 
     if (user == NULL) {
         SETERRQ(PETSC_COMM_SELF,1,"ProblemCtx *user is NULL\n");
     }
 
-    ierr = PetscOptionsBegin(PETSC_COMM_WORLD,"",
-               "options for acoustic solver (riemann -problem acoustic)",""); CHKERRQ(ierr);
-    ierr = PetscOptionsEnum("-initial", "acoustic initial condition",
+    PetscOptionsBegin(PETSC_COMM_WORLD,"",
+               "options for acoustic solver (riemann -problem acoustic)","");
+    PetscCall(PetscOptionsEnum("-initial", "acoustic initial condition",
                "acoustic.h",AcousticInitialTypes,(PetscEnum)(initial),(PetscEnum*)&initial,
-               NULL); CHKERRQ(ierr);
-    ierr = PetscOptionsEnd(); CHKERRQ(ierr);
+               NULL));
+    PetscOptionsEnd();
 
     user->n_dim = 2;
-    ierr = PetscMalloc1(2,&(user->field_names)); CHKERRQ(ierr);
+    PetscCall(PetscMalloc1(2,&(user->field_names)));
     (user->field_names)[0] = (char*)acoustic_pname;
     (user->field_names)[1] = (char*)acoustic_uname;
     user->a_left = -1.0;
