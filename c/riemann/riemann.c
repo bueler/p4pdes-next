@@ -133,8 +133,6 @@ int main(int argc,char **argv) {
     // set up time axis
     PetscCall(TSSetTime(ts,user.t0_default));
     PetscCall(TSSetMaxTime(ts,user.tf_default));
-    dt = user.tf_default - user.t0_default;
-    PetscCall(TSSetTimeStep(ts,dt));  // usually reset below
     PetscCall(TSSetExactFinalTime(ts,TS_EXACTFINALTIME_MATCHSTEP));
     PetscCall(TSSetFromOptions(ts));
 
@@ -142,18 +140,20 @@ int main(int argc,char **argv) {
     PetscCall(DMCreateGlobalVector(da,&q));
     PetscCall(TSGetTime(ts,&t0));
     PetscCall(FormInitial(&info,q,t0,&user));
-    //PetscCall(VecView(q,PETSC_VIEWER_STDOUT_WORLD));
 
     // use CFL to reset initial time-step dt (unless user sets)
-    PetscCall(PetscOptionsHasName(NULL,NULL,"-ts_dt",&flg));
-    PetscCall(GetMaxSpeed(&info,q,t0,&c,&user));
-    if (!flg && c > 0.0) {
-        PetscCall(TSGetMaxTime(ts,&tf));
-        dt = PetscMin(hx / c, tf-t0);
-        PetscCall(TSSetTimeStep(ts,dt));
-    } else {
-        PetscCall(TSGetTimeStep(ts,&dt));
+    PetscCall(PetscOptionsHasName(NULL,NULL,"-ts_time_step",&flg));
+    if (!flg) {
+        PetscCall(GetMaxSpeed(&info,q,t0,&c,&user));
+        if (c > 0.0) {
+            PetscCall(TSGetMaxTime(ts,&tf));
+            dt = PetscMin(hx / c, tf-t0);
+            PetscCall(TSSetTimeStep(ts,dt));
+        } else {
+            PetscCall(PetscPrintf(PETSC_COMM_WORLD, "WARNING: initial dt not set by user, and c not positive in CFL time step\n"));
+        }
     }
+    PetscCall(TSGetTimeStep(ts,&dt));
 
     // solve
     PetscCall(PetscPrintf(PETSC_COMM_WORLD,
