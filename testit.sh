@@ -15,7 +15,7 @@ CURRDIR=${PWD##*/}
 if [ $3 -eq 1 ]; then
     CMD="./$1 $2"
 else
-    CMD="mpiexec -n $3 ./$1 $2"
+    CMD="$PETSC_DIR/$PETSC_ARCH/bin/mpiexec -n $3 ./$1 $2"
 fi
 
 if [[ ! -f output/$1.test$4 ]]; then
