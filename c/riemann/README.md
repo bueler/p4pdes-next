@@ -5,18 +5,21 @@ riemann/
 
 The PETSc code here is `riemann.c`.  The problems it solves are in several `.h` files; see `cases.h` for more.
 
-Do this to build and run the default example from `acoustic.h`:
+Do this to build and run the default example, which is from `acoustic.h`:
 
         $ make riemann
         $ ./riemann -help intro     # basic info
-        $ ./riemann -da_grid_x 2000 -ts_monitor_solution draw \  # runtime movie
-            -draw_size 1000,200 -draw_pause 0.01
-        $ mpiexec -n 2 ./riemann    # parallel solution
+        $ ./riemann -da_grid_x 1000 -ts_monitor_solution draw
+
+Here are some options to make it better:
+
+        $ ./riemann -da_grid_x 3000 -ts_monitor_solution draw -draw_size 800,200 -draw_pause 0.01
+        $ mpiexec -n 4 ./riemann -da_grid_x 12000 -ts_type ssp    # parallel solution
 
 As an example of what it can do see this high-resolution shallow water solution of a dam break problem using SSP time-stepping:
 
         $ ./riemann -problem swater -initial dam -limiter mc -ts_type ssp \
-            -da_grid_x 3000 -ts_monitor_solution draw -draw_size 1000,200
+            -da_grid_x 3000 -ts_monitor_solution draw -draw_size 800,200
 
 ### generating movies
 
@@ -37,7 +40,7 @@ The similar image-generating script `plotsw.py` is able to correctly display the
 
 ### references
 
-* E. Bueler, PETSc for Partial Differential Equations: Numerical solutions in C and Python, SIAM Press, 2020?
+* E. Bueler, PETSc for Partial Differential Equations: Numerical solutions in C and Python, SIAM Press, 2021
 
 * S. Gottlieb, D. I. Ketcheson, & C. W. Shu, High order strong stability preserving time discretizations. Journal of Scientific Computing, 38(3), 251-289, 2009
 
