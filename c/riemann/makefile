@@ -26,7 +26,7 @@ riemann_4:
 	-@../../testit.sh riemann "-problem swater -initial dam -da_grid_x 5 -ts_max_time 2 -ts_monitor" 1 4 "shallow water dam problem"
 
 riemann_5:
-	-@../../testit.sh riemann "-problem swater -b0 -1 -bx -0.1 -initial hump -limiter none -ts_type ssp -da_grid_x 20" 1 5 "shallow water with bottom slope"
+	-@../../testit.sh riemann "-problem swater -b0 -1 -bx -0.1 -initial hump -limiter none -ts_type ssp -da_grid_x 20" 1 5 "shallow water with bottom slope and SSP"
 
 riemann_6:
 	-@../../testit.sh riemann "-problem swater -limiter minmod -initial dam -da_grid_x 8" 4 6 "parallel, shallow water with minmod limiter"
@@ -41,7 +41,7 @@ riemann_9:
 	-@../../testit.sh riemann "-problem traffic -initial greenlight -da_grid_x 5 -ts_monitor" 1 9 "traffic greenlight problem"
 
 riemann_10:
-	-@../../testit.sh riemann "-problem traffic -limiter mc -da_grid_x 20 -ts_max_time 5 -ts_dt 1 -ts_monitor" 1 10 "traffic with mc limiter"
+	-@../../testit.sh riemann "-problem traffic -limiter mc -da_grid_x 20 -ts_type ssp -ts_max_time 5 -ts_time_step 1 -ts_monitor" 1 10 "traffic with mc limiter and SSP and set time step"
 
 
 test: riemann_1 riemann_2 riemann_3 riemann_4 riemann_5 riemann_6 riemann_7 riemann_8 riemann_9 riemann_10
